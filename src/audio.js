@@ -312,6 +312,82 @@ export class Sfx {
     this.tone(130, 0.06, { vol: 0.12, slide: -50, delay: 0.11 });
   }
 
+  // ---------- 道具音效 ----------
+  powerup(kind) {
+    const base = { dash: 72, jetpack: 67, magnet: 76, double: 79, spring: 74, shield: 71, mystery: 81 }[kind] || 72;
+    [0, 4, 7, 12].forEach((d, i) => this.tone(mtof(base + d), 0.18, { type: 'square', vol: 0.06, delay: i * 0.05, cut: 5000 }));
+    this.tone(mtof(base + 24), 0.5, { type: 'sine', vol: 0.08, delay: 0.2 });
+    this.burst(0.35, { vol: 0.08, freq: 3000, q: 0.8, sweep: 3000 });
+  }
+
+  // 道具快結束時的提醒
+  powerWarn() {
+    this.tone(mtof(88), 0.06, { type: 'square', vol: 0.03 });
+  }
+
+  powerEnd() {
+    [79, 74, 67].forEach((m, i) => this.tone(mtof(m), 0.14, { type: 'triangle', vol: 0.07, delay: i * 0.07 }));
+  }
+
+  dash() {
+    this.burst(0.6, { vol: 0.3, freq: 300, q: 1, sweep: 3500, attack: 0.05 });
+    this.tone(110, 0.5, { type: 'sawtooth', vol: 0.08, slide: 220, cut: 1200 });
+  }
+
+  smash() {
+    this.burst(0.25, { vol: 0.35, freq: 900, q: 0.7 });
+    this.tone(260, 0.2, { type: 'square', vol: 0.08, slide: -160, cut: 2000 });
+    this.burst(0.12, { vol: 0.15, freq: 4000, q: 2, delay: 0.05 });
+  }
+
+  shieldBreak() {
+    [2600, 3100, 2200, 3500].forEach((f, i) => this.tone(f, 0.25, { type: 'triangle', vol: 0.06, delay: i * 0.03 }));
+    this.burst(0.4, { vol: 0.25, freq: 5000, q: 0.8, type: 'highpass' });
+  }
+
+  mystery() {
+    for (let i = 0; i < 8; i++) this.tone(mtof(72 + ((i * 5) % 12)), 0.06, { type: 'square', vol: 0.05, delay: i * 0.05 });
+    this.sparkle(0.42);
+  }
+
+  // 噴射背包的持續噴射聲
+  setJet(on) {
+    if (!this.ctx) return;
+    if (!this.jetGain) {
+      const src = this.loopNoise();
+      const f = this.ctx.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = 900;
+      this.jetGain = this.ctx.createGain();
+      this.jetGain.gain.value = 0;
+      src.connect(f).connect(this.jetGain).connect(this.master);
+    }
+    this.jetGain.gain.setTargetAtTime(on ? 0.22 : 0, this.ctx.currentTime, on ? 0.1 : 0.4);
+  }
+
+  stageClear() {
+    const seq = [60, 64, 67, 72, 67, 72, 76, 79, 84];
+    seq.forEach((m, i) => this.tone(mtof(m), i === seq.length - 1 ? 1.2 : 0.16, { type: 'square', vol: 0.07, delay: i * 0.09, cut: 4000 }));
+    [48, 55, 60].forEach((m) => this.tone(mtof(m), 1.4, { type: 'triangle', vol: 0.12, delay: 0.72 }));
+    this.sparkle(0.8);
+    this.sparkle(1.0);
+  }
+
+  buy() {
+    this.tone(mtof(84), 0.08, { type: 'square', vol: 0.06 });
+    this.tone(mtof(91), 0.3, { type: 'square', vol: 0.06, delay: 0.08 });
+    this.burst(0.2, { vol: 0.1, freq: 6000, q: 2, delay: 0.05 });
+  }
+
+  denied() {
+    this.tone(160, 0.2, { type: 'square', vol: 0.06, cut: 900 });
+  }
+
+  revive() {
+    [60, 67, 72, 79].forEach((m, i) => this.tone(mtof(m), 0.25, { type: 'triangle', vol: 0.12, delay: i * 0.08 }));
+    this.burst(0.6, { vol: 0.12, freq: 600, q: 0.6, sweep: 4000 });
+  }
+
   // ---------- 介面與事件音效 ----------
   click() {
     this.tone(1400, 0.04, { type: 'square', vol: 0.05 });

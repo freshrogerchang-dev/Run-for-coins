@@ -8,6 +8,7 @@ import {
   MOVING_TRAIN_SPEED,
   MOVING_TRAIN_TRIGGER,
 } from './config.js';
+import { POWERUPS } from './progress.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const randInt = (a, b) => Math.floor(rand(a, b + 1));
@@ -24,10 +25,13 @@ const shuffle = (arr) => {
 const COIN_Y = 1.05;
 
 export class Level {
-  constructor(scene, models, sfx) {
+  constructor(scene, models, sfx, powerModels) {
     this.scene = scene;
     this.models = models;
     this.sfx = sfx;
+    this.powerModels = powerModels;
+    this.powerups = [];
+    this.debris = [];
     this.obstacles = [];
     this.coins = [];
     this.coinPool = [];
@@ -38,8 +42,12 @@ export class Level {
   reset(playerZ = 0) {
     for (const o of this.obstacles) this.scene.remove(o.mesh);
     for (const c of this.coins) this.releaseCoin(c);
+    for (const p of this.powerups) this.scene.remove(p.mesh);
+    for (const d of this.debris) this.scene.remove(d.mesh);
     this.obstacles = [];
     this.coins = [];
+    this.powerups = [];
+    this.debris = [];
     this.cursor = playerZ - 40;
     this.chunkIndex = 0;
     // 開場擺飾：玩家身後兩側停著列車
@@ -137,11 +145,63 @@ export class Level {
     }
   }
 
+  // ---------- 道具 ----------
+  randomPowerKind() {
+    const list = Object.entries(POWERUPS);
+    let r = Math.random() * list.reduce((s, [, p]) => s + p.weight, 0);
+    for (const [k, p] of list) {
+      r -= p.weight;
+      if (r <= 0) return k;
+    }
+    return 'magnet';
+  }
+
+  addPowerup(kind, lane, z, y = GROUND + 1.25) {
+    const mesh = this.powerModels.make(kind);
+    mesh.position.set(LANES[lane], y, z);
+    this.scene.add(mesh);
+    this.powerups.push({ kind, mesh, x: LANES[lane], y, z, taken: false, t: 0 });
+  }
+
+  // 噴射背包：在天上鋪一條會換道的金幣路
+  addSkyCoins(startZ, count, y) {
+    let lane = randInt(0, 2);
+    for (let i = 0; i < count; i++) {
+      if (i % 14 === 13) lane = Math.max(0, Math.min(2, lane + (Math.random() < 0.5 ? -1 : 1)));
+      this.addCoin(LANES[lane], y, startZ - i * 2.4);
+    }
+  }
+
+  // 衝刺或防護罩撞到的柵欄：彈飛出去
+  knock(o, dirX = 0) {
+    o.knocked = true;
+    this.obstacles = this.obstacles.filter((x) => x !== o);
+    this.debris.push({
+      mesh: o.mesh,
+      v: { x: dirX * 4 + rand(-3, 3), y: rand(8, 11), z: rand(-14, -8) },
+      spin: { x: rand(-8, 8), y: rand(-6, 6), z: rand(-8, 8) },
+      t: 0,
+    });
+  }
+
+  // 續跑時清掉玩家附近的障礙
+  clearAround(z0, z1) {
+    this.obstacles = this.obstacles.filter((o) => {
+      const hit = !o.decorative && o.zFront - o.length < z1 && o.zFront > z0;
+      if (hit) this.scene.remove(o.mesh);
+      return !hit;
+    });
+  }
+
   // ---------- 關卡片段 ----------
   generate(playerZ, speed) {
     while (this.cursor > playerZ - 280) {
       const len = this.makeChunk(this.cursor, speed);
       const gap = Math.max(11, (rand(10, 18) * speed) / 16);
+      // 片段之間的空檔一定三條道都暢通，道具放這裡
+      if (this.chunkIndex > 1 && Math.random() < 0.26) {
+        this.addPowerup(this.randomPowerKind(), randInt(0, 2), this.cursor - len - gap / 2);
+      }
       this.cursor -= len + gap;
       this.chunkIndex++;
     }
@@ -318,8 +378,43 @@ export class Level {
       return !behind;
     });
 
+    for (const p of this.powerups) {
+      const icon = p.mesh.userData.icon;
+      if (p.taken) {
+        p.t += dt;
+        p.mesh.scale.setScalar(1 + p.t * 5);
+        p.mesh.visible = p.t < 0.18;
+      } else {
+        icon.rotation.y += dt * 2.4;
+        p.mesh.position.y = p.y + Math.sin(time * 2.5 + p.z) * 0.15;
+      }
+    }
+    this.powerups = this.powerups.filter((p) => {
+      const done = (p.taken && p.t > 0.2) || p.z > playerZ + 12;
+      if (done) this.scene.remove(p.mesh);
+      return !done;
+    });
+
+    for (const d of this.debris) {
+      d.t += dt;
+      d.v.y -= 30 * dt;
+      d.mesh.position.x += d.v.x * dt;
+      d.mesh.position.y += d.v.y * dt;
+      d.mesh.position.z += d.v.z * dt;
+      d.mesh.rotation.x += d.spin.x * dt;
+      d.mesh.rotation.y += d.spin.y * dt;
+      d.mesh.rotation.z += d.spin.z * dt;
+    }
+    this.debris = this.debris.filter((d) => {
+      const done = d.t > 1.6;
+      if (done) this.scene.remove(d.mesh);
+      return !done;
+    });
+
     for (const c of this.coins) {
-      if (c.taken) {
+      if (c.magnet && !c.taken) {
+        c.mesh.rotation.y += dt * 12;
+      } else if (c.taken) {
         c.t += dt;
         const k = c.t / 0.28;
         c.mesh.position.y += dt * 9;

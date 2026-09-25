@@ -33,9 +33,10 @@
     <header id="hud" class="hud" hidden>
       <div class="hud-score">
         <span class="label">分數</span>
-        <span id="score" class="num">0</span>
+        <span class="score-row"><span id="score" class="num">0</span><span id="mult" class="mult num">×1</span></span>
         <span id="dist" class="sub">0 m</span>
         <span id="sceneName" class="scene-tag">城市鐵道</span>
+        <div id="goal" class="goal" hidden><span id="goalText"></span><i><i id="goalBar"></i></i></div>
       </div>
       <div class="hud-right">
         <div id="coinBox" class="coin-pill" aria-label="金幣">
@@ -56,7 +57,9 @@
       <svg class="off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" /><path d="M16.5 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
     </button>
 
+    <div id="powers" class="powers" aria-label="道具效果"></div>
     <div id="toast" class="toast" hidden></div>
+    <div id="banner" class="banner" role="status" hidden><h3></h3><p></p></div>
 
     <!-- 開始畫面 -->
     <section id="startScreen" class="start" hidden>
@@ -68,7 +71,13 @@
         <dl class="stats">
           <div><dt>最高分</dt><dd id="bestStart" class="num">0</dd></div>
           <div><dt>金幣存款</dt><dd id="bankStart" class="num">0</dd></div>
+          <div><dt>分數倍率</dt><dd id="multStart" class="num">×1</dd></div>
         </dl>
+        <div class="menu-row">
+          <button type="button" id="stagesBtn" class="chip-btn"><span>關卡</span><b id="stagesCount" class="num">0/10</b></button>
+          <button type="button" id="wardrobeBtn" class="chip-btn"><span>服裝</span><b id="outfitCount" class="num">1/12</b></button>
+          <button type="button" id="shopBtn" class="chip-btn"><span>商店</span><b>升級道具</b></button>
+        </div>
         <fieldset class="scenes">
           <legend>選擇場景</legend>
           <div class="scene-grid" role="radiogroup" aria-label="選擇場景">
@@ -94,7 +103,34 @@
           <li><kbd>P</kbd><span>暫停</span></li>
         </ul>
         <p class="touch-hint">手機：左右滑換道，上滑跳，下滑鏟</p>
-        <p class="tip">踩上黃黑斜坡可以跑上車頂。迎面亮燈的列車會開過來，聽到喇叭聲就快換道！</p>
+        <p class="tip">撿發光泡泡裡的道具：衝刺鞋、噴射背包、磁鐵、雙倍金幣、彈跳鞋、防護罩和神秘寶箱。迎面亮燈的列車會開過來，聽到喇叭聲就快換道！</p>
+      </div>
+    </section>
+
+    <!-- 關卡 / 服裝 / 商店 -->
+    <section id="panel" class="panel" aria-label="關卡、服裝與商店" hidden>
+      <header class="panel-head">
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" data-tab="stages">關卡</button>
+          <button type="button" role="tab" data-tab="wardrobe">服裝</button>
+          <button type="button" role="tab" data-tab="shop">商店</button>
+        </div>
+        <span class="bank" title="金幣存款"><i class="coin-icon" aria-hidden="true"></i><b id="panelBank" class="num">0</b></span>
+        <button type="button" id="panelClose" class="icon-btn close-btn" aria-label="關閉">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg>
+        </button>
+      </header>
+      <div id="panelBody" class="panel-body"></div>
+    </section>
+
+    <!-- 續跑 -->
+    <section id="reviveScreen" class="overlay" hidden>
+      <div class="card revive">
+        <div id="reviveRing" class="ring" aria-hidden="true"></div>
+        <h2>差一點！</h2>
+        <p>花 <b id="reviveCost" class="num">150</b> 金幣繼續跑？<br /><small>你有 <span id="reviveBank" class="num">0</span> 金幣</small></p>
+        <button id="reviveBtn" class="btn-primary">繼續跑</button>
+        <button id="giveUpBtn" class="btn-ghost">不用了</button>
       </div>
     </section>
 
@@ -117,6 +153,7 @@
           <div><dt>距離</dt><dd id="overDist" class="num">0 m</dd></div>
           <div><dt>最高分</dt><dd id="overBest" class="num">0</dd></div>
         </dl>
+        <p id="overMult" class="over-mult"></p>
         <div class="ticket-actions">
           <button id="againBtn" class="btn-primary">再跑一次</button>
           <button id="menuBtn" class="btn-ghost">回到月台</button>

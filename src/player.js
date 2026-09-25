@@ -1,13 +1,14 @@
-// 跑者角色：用基本幾何組成的卡通人物 + 程序化跑步動畫
+// 跑者角色：用基本幾何組成的卡通人物 + 程序化跑步動畫 + 服裝與道具外觀
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 
-function part(geo, mat, parent, { x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0 } = {}) {
+function part(geo, mat, parent, { x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1 } = {}) {
   const m = new THREE.Mesh(geo, mat);
   m.position.set(x, y, z);
   m.rotation.set(rx, ry, rz);
+  m.scale.set(sx, sy, sz);
   m.castShadow = true;
   m.receiveShadow = true;
   parent.add(m);
@@ -21,28 +22,41 @@ function pivot(parent, x, y, z = 0) {
   return g;
 }
 
+const hemi = (r, s = 24) => new THREE.SphereGeometry(r, s, 12, 0, Math.PI * 2, 0, Math.PI / 2);
+
 export class Player {
   constructor() {
     this.root = new THREE.Group();
     this.phase = 0;
     this.pose = { jump: 0, slide: 0, crash: 0, idle: 1 };
+    this.fx = { jetpack: false, spring: false, shield: false, magnet: false };
     this.build();
+    this.buildPowerVisuals();
   }
 
   build() {
+    const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.65, ...extra });
     const mat = {
-      skin: new THREE.MeshStandardMaterial({ color: '#f2c29b', roughness: 0.6 }),
-      hoodie: new THREE.MeshStandardMaterial({ color: '#ff5a1f', roughness: 0.7 }),
-      hoodieDark: new THREE.MeshStandardMaterial({ color: '#d9430f', roughness: 0.75 }),
-      pants: new THREE.MeshStandardMaterial({ color: '#2d4f8c', roughness: 0.8 }),
-      cap: new THREE.MeshStandardMaterial({ color: '#1768d9', roughness: 0.5 }),
-      shoe: new THREE.MeshStandardMaterial({ color: '#f7f7f5', roughness: 0.45 }),
-      sole: new THREE.MeshStandardMaterial({ color: '#e5293b', roughness: 0.6 }),
-      hair: new THREE.MeshStandardMaterial({ color: '#2b1b12', roughness: 0.8 }),
-      eye: new THREE.MeshStandardMaterial({ color: '#111', roughness: 0.2 }),
-      pack: new THREE.MeshStandardMaterial({ color: '#ffd23f', roughness: 0.55 }),
-      strap: new THREE.MeshStandardMaterial({ color: '#333', roughness: 0.7 }),
-      phones: new THREE.MeshStandardMaterial({ color: '#20c997', roughness: 0.35, metalness: 0.3 }),
+      skin: std('#f2c29b', { roughness: 0.6 }),
+      top: std('#ff5a1f', { roughness: 0.7 }),
+      trim: std('#d9430f', { roughness: 0.75 }),
+      pants: std('#2d4f8c', { roughness: 0.8 }),
+      hat: std('#1768d9', { roughness: 0.5 }),
+      shoe: std('#f7f7f5', { roughness: 0.45 }),
+      sole: std('#e5293b', { roughness: 0.6 }),
+      hair: std('#2b1b12', { roughness: 0.8 }),
+      eye: std('#111111', { roughness: 0.2 }),
+      pack: std('#ffd23f', { roughness: 0.55 }),
+      strap: std('#333333', { roughness: 0.7 }),
+      phones: std('#20c997', { roughness: 0.35, metalness: 0.3 }),
+      scarf: std('#2a9d8f', { roughness: 0.8 }),
+      gold: std('#e0b020', { roughness: 0.3, metalness: 0.9 }),
+      dark: std('#1a1a1a', { roughness: 0.4 }),
+      shades: std('#0d0d12', { roughness: 0.05, metalness: 0.6 }),
+      glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(0.8, 3.2, 3.4) }),
+      lamp: new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 3.6, 2.4) }),
+      glass: new THREE.MeshStandardMaterial({ color: '#cfefff', transparent: true, opacity: 0.25, roughness: 0.02, metalness: 0.3, depthWrite: false }),
+      gem: std('#e0245e', { roughness: 0.1, metalness: 0.3 }),
     };
     this.mats = mat;
 
@@ -53,55 +67,47 @@ export class Player {
 
     // 上半身
     this.torso = pivot(this.hips, 0, 0.08);
-    part(new THREE.CapsuleGeometry(0.22, 0.28, 6, 14), mat.hoodie, this.torso, { y: 0.28 });
-    part(new THREE.TorusGeometry(0.13, 0.045, 8, 16), mat.hoodieDark, this.torso, { y: 0.56, rx: Math.PI / 2 });
-    // 帽 T 口袋
-    part(new RoundedBoxGeometry(0.28, 0.12, 0.05, 2, 0.02), mat.hoodieDark, this.torso, { y: 0.16, z: -0.2 });
+    part(new THREE.CapsuleGeometry(0.22, 0.28, 6, 14), mat.top, this.torso, { y: 0.28 });
+    part(new THREE.TorusGeometry(0.13, 0.045, 8, 16), mat.trim, this.torso, { y: 0.56, rx: Math.PI / 2 });
+    part(new RoundedBoxGeometry(0.28, 0.12, 0.05, 2, 0.02), mat.trim, this.torso, { y: 0.16, z: -0.2 });
+    part(new THREE.BoxGeometry(0.46, 0.05, 0.47), mat.trim, this.torso, { y: 0.07 });
     // 背包
-    part(new RoundedBoxGeometry(0.34, 0.4, 0.18, 3, 0.07), mat.pack, this.torso, { y: 0.32, z: 0.24 });
-    part(new RoundedBoxGeometry(0.28, 0.12, 0.08, 2, 0.03), mat.hoodieDark, this.torso, { y: 0.2, z: 0.34 });
+    this.pack = new THREE.Group();
+    this.torso.add(this.pack);
+    part(new RoundedBoxGeometry(0.34, 0.4, 0.18, 3, 0.07), mat.pack, this.pack, { y: 0.32, z: 0.24 });
+    part(new RoundedBoxGeometry(0.28, 0.12, 0.08, 2, 0.03), mat.trim, this.pack, { y: 0.2, z: 0.34 });
     for (const sx of [-0.12, 0.12]) {
-      part(new THREE.BoxGeometry(0.04, 0.42, 0.03), mat.strap, this.torso, { x: sx, y: 0.34, z: -0.2 });
+      part(new THREE.BoxGeometry(0.04, 0.42, 0.03), mat.strap, this.pack, { x: sx, y: 0.34, z: -0.2 });
     }
+    // 圍巾
+    this.scarf = new THREE.Group();
+    this.torso.add(this.scarf);
+    part(new THREE.TorusGeometry(0.14, 0.055, 8, 18), mat.scarf, this.scarf, { y: 0.57, rx: Math.PI / 2 });
+    part(new RoundedBoxGeometry(0.1, 0.3, 0.04, 2, 0.02), mat.scarf, this.scarf, { x: 0.08, y: 0.42, z: 0.2, rx: 0.4 });
 
     // 頭
     this.head = pivot(this.torso, 0, 0.62);
     part(new THREE.CylinderGeometry(0.07, 0.08, 0.1, 10), mat.skin, this.head, { y: 0.02 });
     part(new THREE.SphereGeometry(0.19, 24, 18), mat.skin, this.head, { y: 0.2 });
-    part(new THREE.SphereGeometry(0.195, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat.hair, this.head, {
-      y: 0.21,
-      rx: 0.35,
-    });
-    // 帽子（帽簷朝前 -z）
-    part(new THREE.SphereGeometry(0.2, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat.cap, this.head, { y: 0.24 });
-    part(new THREE.CylinderGeometry(0.16, 0.17, 0.025, 20, 1, false, -Math.PI / 2, Math.PI), mat.cap, this.head, {
-      y: 0.25,
-      z: -0.13,
-      rx: -0.12,
-    });
-    for (const ex of [-0.07, 0.07]) {
-      part(new THREE.SphereGeometry(0.025, 10, 8), mat.eye, this.head, { x: ex, y: 0.2, z: -0.175 });
-    }
+    part(hemi(0.195), mat.hair, this.head, { y: 0.21, rx: 0.35 });
+    for (const ex of [-0.07, 0.07]) part(new THREE.SphereGeometry(0.025, 10, 8), mat.eye, this.head, { x: ex, y: 0.2, z: -0.175 });
     part(new THREE.SphereGeometry(0.03, 10, 8), mat.skin, this.head, { y: 0.15, z: -0.19 });
-    // 耳機
-    part(new THREE.TorusGeometry(0.2, 0.02, 6, 20, Math.PI), mat.phones, this.head, { y: 0.22, rz: 0 });
-    for (const ex of [-0.19, 0.19]) {
-      part(new THREE.CylinderGeometry(0.07, 0.07, 0.06, 14), mat.phones, this.head, { x: ex, y: 0.2, rz: Math.PI / 2 });
-    }
+    this.buildHats();
 
     // 手臂
     this.arms = [];
     for (const side of [-1, 1]) {
       const shoulder = pivot(this.torso, side * 0.27, 0.48);
-      part(new THREE.CapsuleGeometry(0.075, 0.2, 4, 10), mat.hoodie, shoulder, { y: -0.15 });
+      part(new THREE.CapsuleGeometry(0.075, 0.2, 4, 10), mat.top, shoulder, { y: -0.15 });
       const elbow = pivot(shoulder, 0, -0.3);
-      part(new THREE.CapsuleGeometry(0.065, 0.18, 4, 10), mat.hoodie, elbow, { y: -0.12 });
+      part(new THREE.CapsuleGeometry(0.065, 0.18, 4, 10), mat.top, elbow, { y: -0.12 });
       part(new THREE.SphereGeometry(0.07, 12, 10), mat.skin, elbow, { y: -0.3 });
       this.arms.push({ shoulder, elbow, side });
     }
 
     // 腿
     this.legs = [];
+    this.springs = [];
     for (const side of [-1, 1]) {
       const hip = pivot(this.hips, side * 0.12, 0);
       part(new THREE.CapsuleGeometry(0.095, 0.26, 4, 10), mat.pants, hip, { y: -0.2 });
@@ -114,25 +120,219 @@ export class Player {
     }
   }
 
-  // state: { speed, grounded, vy, sliding, crashed, lean, idle }
+  // 各種帽子與配件，依服裝切換顯示
+  buildHats() {
+    const m = this.mats;
+    const h = this.head;
+    const g = () => {
+      const grp = new THREE.Group();
+      h.add(grp);
+      return grp;
+    };
+    const hats = {};
+    const brim = (r = 0.17) => new THREE.CylinderGeometry(r - 0.01, r, 0.025, 20, 1, false, -Math.PI / 2, Math.PI);
+
+    hats.cap = g();
+    part(hemi(0.2), m.hat, hats.cap, { y: 0.24 });
+    part(brim(), m.hat, hats.cap, { y: 0.25, z: -0.13, rx: -0.12 });
+
+    hats.conductor = g();
+    part(new THREE.CylinderGeometry(0.21, 0.2, 0.17, 20), m.hat, hats.conductor, { y: 0.34 });
+    part(new THREE.CylinderGeometry(0.23, 0.23, 0.03, 20), m.hat, hats.conductor, { y: 0.43 });
+    part(new THREE.TorusGeometry(0.205, 0.018, 6, 24), m.gold, hats.conductor, { y: 0.29, rx: Math.PI / 2 });
+    part(brim(0.16), m.dark, hats.conductor, { y: 0.27, z: -0.14, rx: -0.2 });
+    part(new THREE.BoxGeometry(0.06, 0.05, 0.02), m.gold, hats.conductor, { y: 0.36, z: -0.21 });
+
+    hats.helmet = g();
+    part(hemi(0.235), m.hat, hats.helmet, { y: 0.23 });
+    part(new THREE.TorusGeometry(0.235, 0.025, 6, 24), m.hat, hats.helmet, { y: 0.235, rx: Math.PI / 2 });
+    part(new THREE.CylinderGeometry(0.05, 0.05, 0.06, 12), m.dark, hats.helmet, { y: 0.33, z: -0.21, rx: Math.PI / 2 });
+    part(new THREE.CircleGeometry(0.04, 12), m.lamp, hats.helmet, { y: 0.33, z: -0.245, ry: Math.PI });
+
+    hats.beanie = g();
+    part(new THREE.SphereGeometry(0.21, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), m.hat, hats.beanie, { y: 0.2, sy: 1.2 });
+    part(new THREE.TorusGeometry(0.2, 0.045, 8, 24), m.hat, hats.beanie, { y: 0.26, rx: Math.PI / 2 });
+    part(new THREE.SphereGeometry(0.075, 12, 10), m.top, hats.beanie, { y: 0.47 });
+
+    hats.visor = g();
+    part(new THREE.TorusGeometry(0.2, 0.035, 6, 24, Math.PI * 1.1), m.glow, hats.visor, { y: 0.21, rx: -Math.PI / 2, rz: -0.16 });
+    part(new THREE.SphereGeometry(0.2, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.35), m.hair, hats.visor, { y: 0.24, sy: 1.5 });
+
+    hats.cowboy = g();
+    part(new THREE.CylinderGeometry(0.4, 0.4, 0.03, 28), m.hat, hats.cowboy, { y: 0.28 });
+    part(new THREE.CylinderGeometry(0.15, 0.18, 0.22, 16), m.hat, hats.cowboy, { y: 0.4 });
+    part(new THREE.CylinderGeometry(0.183, 0.183, 0.045, 16), m.dark, hats.cowboy, { y: 0.32 });
+
+    hats.headband = g();
+    part(new THREE.TorusGeometry(0.197, 0.03, 6, 24), m.hat, hats.headband, { y: 0.27, rx: Math.PI / 2 });
+    part(new THREE.BoxGeometry(0.05, 0.22, 0.02), m.hat, hats.headband, { x: -0.04, y: 0.18, z: 0.22, rz: 0.3, rx: 0.4 });
+    part(new THREE.BoxGeometry(0.05, 0.2, 0.02), m.hat, hats.headband, { x: 0.05, y: 0.19, z: 0.22, rz: -0.25, rx: 0.4 });
+
+    hats.pith = g();
+    part(hemi(0.225), m.hat, hats.pith, { y: 0.25, sy: 0.9 });
+    part(new THREE.CylinderGeometry(0.32, 0.33, 0.02, 24), m.hat, hats.pith, { y: 0.27 });
+    part(new THREE.TorusGeometry(0.226, 0.018, 6, 24), m.trim, hats.pith, { y: 0.29, rx: Math.PI / 2 });
+
+    hats.fire = g();
+    part(hemi(0.235), m.hat, hats.fire, { y: 0.24 });
+    part(new THREE.CylinderGeometry(0.3, 0.3, 0.025, 24), m.hat, hats.fire, { y: 0.25, rx: 0.18 });
+    part(new THREE.BoxGeometry(0.1, 0.12, 0.03), m.gold, hats.fire, { y: 0.37, z: -0.2, rx: -0.4 });
+
+    hats.bubble = g();
+    part(new THREE.SphereGeometry(0.34, 28, 18), m.glass, hats.bubble, { y: 0.2 }).castShadow = false;
+    part(new THREE.TorusGeometry(0.2, 0.045, 8, 24), m.pack, hats.bubble, { y: -0.02, rx: Math.PI / 2 });
+
+    hats.crown = g();
+    part(new THREE.CylinderGeometry(0.17, 0.17, 0.1, 20, 1, true), m.gold, hats.crown, { y: 0.42 });
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      part(new THREE.ConeGeometry(0.04, 0.1, 6), m.gold, hats.crown, { x: Math.cos(a) * 0.165, y: 0.51, z: Math.sin(a) * 0.165 });
+      part(new THREE.SphereGeometry(0.02, 8, 6), m.gem, hats.crown, { x: Math.cos(a) * 0.175, y: 0.42, z: Math.sin(a) * 0.175 });
+    }
+
+    hats.none = g();
+    part(new THREE.SphereGeometry(0.205, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.4), m.hair, hats.none, { y: 0.23, sy: 1.25 });
+    this.hats = hats;
+
+    const extras = {};
+    extras.phones = g();
+    part(new THREE.TorusGeometry(0.2, 0.02, 6, 20, Math.PI), m.phones, extras.phones, { y: 0.22 });
+    for (const ex of [-0.19, 0.19]) part(new THREE.CylinderGeometry(0.07, 0.07, 0.06, 14), m.phones, extras.phones, { x: ex, y: 0.2, rz: Math.PI / 2 });
+    extras.sunglasses = g();
+    part(new RoundedBoxGeometry(0.28, 0.07, 0.04, 2, 0.015), m.shades, extras.sunglasses, { y: 0.205, z: -0.18 });
+    extras.headlamp = g();
+    extras.scarf = this.scarf;
+    this.extras = extras;
+  }
+
+  applyOutfit(o) {
+    const m = this.mats;
+    const c = o.colors;
+    const set = (mat, color) => {
+      mat.color.set(color);
+      mat.metalness = o.metallic ? 0.85 : 0;
+      mat.roughness = o.metallic ? 0.28 : 0.65;
+    };
+    set(m.top, c.top);
+    set(m.trim, c.trim);
+    set(m.pants, c.pants);
+    set(m.hat, c.hat);
+    set(m.pack, c.pack);
+    set(m.shoe, c.shoe);
+    set(m.sole, c.sole);
+    m.hair.color.set(c.hair);
+    m.scarf.color.set(c.scarf || c.trim);
+    if (o.hat === 'bubble') m.hat.color.set('#ffffff');
+    for (const [k, grp] of Object.entries(this.hats)) grp.visible = k === o.hat;
+    for (const [k, grp] of Object.entries(this.extras)) grp.visible = o.extras.includes(k);
+  }
+
+  // ---------- 道具外觀 ----------
+  buildPowerVisuals() {
+    const red = new THREE.MeshStandardMaterial({ color: '#e53935', roughness: 0.35, metalness: 0.4 });
+    const steel = new THREE.MeshStandardMaterial({ color: '#b0b8c4', roughness: 0.3, metalness: 0.9 });
+    this.flameMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 1.8, 0.4), transparent: true, opacity: 0.9 });
+
+    // 噴射背包
+    this.jet = new THREE.Group();
+    this.torso.add(this.jet);
+    this.flames = [];
+    for (const x of [-0.11, 0.11]) {
+      part(new THREE.CapsuleGeometry(0.095, 0.32, 4, 12), red, this.jet, { x, y: 0.34, z: 0.27 });
+      part(new THREE.CylinderGeometry(0.06, 0.09, 0.1, 12), steel, this.jet, { x, y: 0.09, z: 0.27 });
+      const f = part(new THREE.ConeGeometry(0.07, 0.4, 10), this.flameMat, this.jet, { x, y: -0.14, z: 0.27, rx: Math.PI });
+      f.castShadow = false;
+      this.flames.push(f);
+    }
+    part(new THREE.BoxGeometry(0.18, 0.3, 0.06), steel, this.jet, { y: 0.34, z: 0.2 });
+    this.jet.visible = false;
+
+    // 彈跳鞋的彈簧
+    const helix = new THREE.CatmullRomCurve3(
+      Array.from({ length: 41 }, (_, i) => {
+        const a = i * 0.6;
+        return new THREE.Vector3(Math.cos(a) * 0.07, -i * 0.0055, Math.sin(a) * 0.07);
+      }),
+    );
+    const springGeo = new THREE.TubeGeometry(helix, 80, 0.018, 6);
+    const green = new THREE.MeshStandardMaterial({ color: '#2ecc71', roughness: 0.3, metalness: 0.6 });
+    for (const leg of this.legs) {
+      const s = part(springGeo, green, leg.ankle, { y: -0.1, z: -0.05 });
+      s.visible = false;
+      this.springs.push(s);
+    }
+
+    // 防護罩（邊緣發光的泡泡）
+    this.shieldMat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      uniforms: { uTime: { value: 0 }, uColor: { value: new THREE.Color(0.3, 0.8, 1.6) } },
+      vertexShader: /* glsl */ `
+        varying vec3 vN; varying vec3 vV; varying vec3 vP;
+        void main() {
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); vP = position;
+          gl_Position = projectionMatrix * mv;
+        }`,
+      fragmentShader: /* glsl */ `
+        uniform float uTime; uniform vec3 uColor;
+        varying vec3 vN; varying vec3 vV; varying vec3 vP;
+        void main() {
+          float f = pow(1.0 - abs(dot(vN, vV)), 2.5);
+          float bands = 0.5 + 0.5 * sin(vP.y * 18.0 - uTime * 4.0);
+          gl_FragColor = vec4(uColor * (f * 1.2 + bands * 0.08), f * 0.9 + 0.05);
+        }`,
+    });
+    this.shield = new THREE.Mesh(new THREE.SphereGeometry(1.05, 32, 18), this.shieldMat);
+    this.shield.position.y = 0.95;
+    this.shield.visible = false;
+    this.root.add(this.shield);
+
+    // 頭上的磁鐵
+    this.magnet = new THREE.Group();
+    const horse = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.06, 8, 20, Math.PI), red);
+    horse.rotation.z = Math.PI;
+    this.magnet.add(horse);
+    for (const x of [-0.16, 0.16]) {
+      const tip = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.12), steel);
+      tip.position.set(x, 0.03, 0);
+      this.magnet.add(tip);
+    }
+    this.magnet.position.set(0, 2.2, 0);
+    this.magnet.visible = false;
+    this.root.add(this.magnet);
+  }
+
+  setPower(fx) {
+    Object.assign(this.fx, fx);
+    this.jet.visible = this.fx.jetpack;
+    this.pack.visible = !this.fx.jetpack;
+    for (const s of this.springs) s.visible = this.fx.spring;
+    this.shield.visible = this.fx.shield;
+    this.magnet.visible = this.fx.magnet;
+  }
+
+  // state: { speed, grounded, vy, sliding, crashed, lean, idle, flying }
   animate(dt, s) {
     const k = 1 - Math.exp(-dt * 14);
     const p = this.pose;
-    p.jump = lerp(p.jump, !s.grounded && !s.sliding ? 1 : 0, k);
+    const airborne = !s.grounded && !s.sliding && !s.flying;
+    p.jump = lerp(p.jump, airborne ? 1 : 0, k);
     p.slide = lerp(p.slide, s.sliding ? 1 : 0, 1 - Math.exp(-dt * 20));
     p.crash = lerp(p.crash, s.crashed ? 1 : 0, 1 - Math.exp(-dt * 8));
     p.idle = lerp(p.idle, s.idle ? 1 : 0, 1 - Math.exp(-dt * 6));
+    p.fly = lerp(p.fly || 0, s.flying ? 1 : 0, k);
 
     if (!s.crashed) this.phase += dt * (s.idle ? 2.2 : 4.5 + s.speed * 0.22);
     const ph = this.phase;
-    const run = (1 - p.jump) * (1 - p.slide) * (1 - p.idle) * (1 - p.crash);
+    const run = (1 - p.jump) * (1 - p.slide) * (1 - p.idle) * (1 - p.crash) * (1 - p.fly);
 
-    // 跑步
     const swing = Math.sin(ph);
     this.hips.position.y = 0.95 + run * Math.abs(Math.cos(ph)) * 0.07 + p.idle * Math.sin(ph) * 0.01;
-    this.torso.rotation.x = -0.22 * run - 0.1 * p.jump + 0.05 * p.idle;
+    this.torso.rotation.x = -0.22 * run - 0.1 * p.jump + 0.05 * p.idle - 0.35 * p.fly;
     this.torso.rotation.y = swing * 0.15 * run;
-    this.head.rotation.x = 0.18 * run + 0.1 * p.jump;
+    this.head.rotation.x = 0.18 * run + 0.1 * p.jump + 0.3 * p.fly;
 
     for (const leg of this.legs) {
       const s2 = leg.side < 0 ? swing : -swing;
@@ -143,26 +343,32 @@ export class Player {
       const jumpKnee = leg.side < 0 ? -1.5 : -0.9;
       const slideHip = 1.35;
       const slideKnee = leg.side < 0 ? -0.2 : -0.9;
-      const crashHip = 0.6;
-      const crashKnee = -0.4;
-      leg.hip.rotation.x = runHip * run + jumpHip * p.jump + slideHip * p.slide + crashHip * p.crash;
-      leg.knee.rotation.x = runKnee * run + jumpKnee * p.jump + slideKnee * p.slide + crashKnee * p.crash - 0.05 * p.idle;
-      leg.ankle.rotation.x = -0.3 * run * Math.max(0, -s2) + 0.3 * p.slide;
+      const flyHip = -0.1 + Math.sin(ph * 0.5 + leg.side) * 0.1;
+      leg.hip.rotation.x = runHip * run + jumpHip * p.jump + slideHip * p.slide + 0.6 * p.crash + flyHip * p.fly;
+      leg.knee.rotation.x = runKnee * run + jumpKnee * p.jump + slideKnee * p.slide - 0.4 * p.crash - 0.05 * p.idle - 0.5 * p.fly;
+      leg.ankle.rotation.x = -0.3 * run * Math.max(0, -s2) + 0.3 * p.slide + 0.4 * p.fly;
       leg.hip.rotation.z = -leg.side * 0.04 * p.idle;
     }
     for (const arm of this.arms) {
       const s2 = arm.side < 0 ? -swing : swing;
-      arm.shoulder.rotation.x = s2 * 0.9 * run - 2.6 * p.jump * (arm.side < 0 ? 1 : 0.8) + -0.9 * p.slide - 1.8 * p.crash;
-      arm.shoulder.rotation.z = arm.side * (0.12 + 0.35 * p.jump + 0.9 * p.slide + 0.6 * p.crash + 0.05 * p.idle);
-      arm.elbow.rotation.x = 1.3 * run + 0.4 * p.jump + 0.2 * p.slide + 0.15 * p.idle;
+      arm.shoulder.rotation.x = s2 * 0.9 * run - 2.6 * p.jump * (arm.side < 0 ? 1 : 0.8) + -0.9 * p.slide - 1.8 * p.crash + 0.5 * p.fly;
+      arm.shoulder.rotation.z = arm.side * (0.12 + 0.35 * p.jump + 0.9 * p.slide + 0.6 * p.crash + 0.05 * p.idle + 0.6 * p.fly);
+      arm.elbow.rotation.x = 1.3 * run + 0.4 * p.jump + 0.2 * p.slide + 0.15 * p.idle + 0.2 * p.fly;
     }
 
-    // 整體姿勢
-    this.body.rotation.x = 1.15 * p.slide + 1.45 * p.crash;
-    this.body.position.y = 0.12 * p.slide + 0.18 * p.crash;
+    this.body.rotation.x = 1.15 * p.slide + 1.45 * p.crash - 0.25 * p.fly;
+    this.body.position.y = 0.12 * p.slide + 0.18 * p.crash + (this.fx.spring ? 0.2 * (1 - p.slide) : 0);
     this.body.position.z = 0.25 * p.slide + 0.7 * p.crash;
     this.body.rotation.z = s.lean ?? 0;
-    // 空翻：跳躍上升時稍微前傾
     this.hips.rotation.x = -0.25 * p.jump * Math.max(0, Math.min(1, s.vy / 10));
+
+    // 道具動畫
+    const t = performance.now() / 1000;
+    if (this.jet.visible) for (const f of this.flames) f.scale.set(1, 0.8 + Math.random() * 0.6 + p.fly * 0.6, 1);
+    if (this.shield.visible) this.shieldMat.uniforms.uTime.value = t;
+    if (this.magnet.visible) {
+      this.magnet.rotation.y = t * 3;
+      this.magnet.position.y = 2.2 + Math.sin(t * 4) * 0.08;
+    }
   }
 }
