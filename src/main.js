@@ -83,6 +83,7 @@ const env = new Environment(stage.scene);
 const player = new Player();
 stage.scene.add(player.root);
 const level = new Level(stage.scene, models, sfx, new PowerupModels());
+level.themeAt = (z) => THEMES[env.themeAt(z)];
 const outfitOf = (id) => OUTFITS.find((o) => o.id === id) || OUTFITS[0];
 let outfitId = outfitUnlocked(store.get('outfit', 'street')) ? store.get('outfit', 'street') : 'street';
 player.applyOutfit(outfitOf(outfitId));
@@ -638,10 +639,12 @@ function updateWeather(dt) {
 // 迎面列車的轟隆聲與車輪聲
 function updateTrainAudio(dt) {
   let p = 0;
+  let vehicleNear = 'train';
   if (S.mode === 'playing') {
     for (const o of level.obstacles) {
       if (!o.moving || !o.active) continue;
       const d = Math.max(0, S.z - o.zFront, o.zFront - o.length - S.z);
+      if (1 - d / 90 > p) vehicleNear = o.vehicle;
       p = Math.max(p, 1 - d / 90);
     }
   }
@@ -650,7 +653,8 @@ function updateTrainAudio(dt) {
   if (p > 0.3) {
     S.clackT -= dt;
     if (S.clackT <= 0) {
-      sfx.clack();
+      if (vehicleNear === 'train') sfx.clack();
+      else if (['camels', 'elephants', 'tortoises'].includes(vehicleNear)) sfx.step('sand');
       S.clackT = 0.5 - p * 0.25;
     }
   }

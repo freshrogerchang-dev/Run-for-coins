@@ -20,6 +20,7 @@ import {
   plankTexture,
   glowTexture,
   moonTexture,
+  roadTexture,
 } from './textures.js';
 import { LANES, SEG_LEN, SEG_COUNT } from './config.js';
 import { THEMES, THEME_ORDER, TOUR_LEN } from './themes.js';
@@ -188,6 +189,24 @@ export class Environment {
       });
     }
 
+    // 非鐵道場景的路面
+    this.roadMats = {};
+    for (const id of THEME_ORDER) {
+      const track = THEMES[id].track;
+      if (track === 'rail') continue;
+      const r = roadTexture(track);
+      r.map.repeat.set(1, L / 8);
+      r.emissiveMap.repeat.set(1, L / 8);
+      this.roadMats[id] = new THREE.MeshStandardMaterial({
+        map: r.map,
+        emissiveMap: r.emissive ? r.emissiveMap : null,
+        emissive: r.emissive ? '#ffffff' : '#000000',
+        emissiveIntensity: r.emissive ? 1.6 : 0,
+        roughness: track === 'neonroad' ? 0.3 : track === 'metal' ? 0.4 : 0.9,
+        metalness: track === 'metal' ? 0.5 : 0,
+      });
+    }
+
     this.wallMats = [0, 1, 2, 3].map(() => {
       const t = wallTexture();
       t.repeat.set(L / 16, 1);
@@ -283,6 +302,7 @@ export class Environment {
   buildGeometries() {
     const G = {};
     G.ground = new THREE.PlaneGeometry(90, L).rotateX(-Math.PI / 2).translate(0, 0, HALF);
+    G.road = new THREE.BoxGeometry(8.4, 0.2, L).translate(0, 0.1, HALF);
 
     // 道床（梯形碎石堆）
     const shape = new THREE.Shape();
@@ -574,10 +594,12 @@ export class Environment {
     const common = new THREE.Group();
     const ground = mesh(G.ground, this.groundMats.city);
     const ballast = mesh(G.ballast, this.ballastMats.city);
-    common.add(ground, ballast);
-    common.add(mesh(G.railFeet, M.railBase));
-    common.add(mesh(G.rails, M.rail, { cast: true }));
-    common.add(mesh(G.wires, M.wire));
+    const feet = mesh(G.railFeet, M.railBase);
+    const rails = mesh(G.rails, M.rail, { cast: true });
+    const wires = mesh(G.wires, M.wire);
+    const road = mesh(G.road, M.concrete);
+    road.visible = false;
+    common.add(ground, ballast, feet, rails, wires, road);
     const gantry = mesh(G.gantry, M.steel, { cast: true });
     common.add(gantry);
 
@@ -594,7 +616,7 @@ export class Environment {
     }
     common.add(sleepers);
     seg.add(common);
-    seg.userData = { ground, ballast, gantry, decor: {}, theme: null };
+    seg.userData = { ground, ballast, gantry, road, railParts: [ballast, feet, rails, wires, sleepers], decor: {}, theme: null };
     this.scene.add(seg);
     return seg;
   }
@@ -617,7 +639,12 @@ export class Environment {
     u.theme = id;
     u.ground.material = this.groundMats[id];
     u.ballast.material = this.ballastMats[id];
-    u.gantry.visible = id !== 'tunnel';
+    // 鐵道場景有軌道和電車線；其他場景換成道路或小徑
+    const rail = THEMES[id].track === 'rail';
+    for (const m of u.railParts) m.visible = rail;
+    u.road.visible = !rail;
+    if (!rail) u.road.material = this.roadMats[id];
+    u.gantry.visible = rail && id !== 'tunnel';
     if (id === 'seaside') {
       u.ground.scale.x = 53 / 90;
       u.ground.position.x = -18.5;

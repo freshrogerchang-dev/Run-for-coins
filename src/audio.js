@@ -305,6 +305,44 @@ export class Sfx {
     }
   }
 
+  // 迎面而來的交通工具或動物的提示聲
+  vehicleCall(kind) {
+    if (!this.ctx) return;
+    switch (kind) {
+      case 'bus':
+        for (let i = 0; i < 2; i++) this.tone(466, 0.22, { type: 'square', vol: 0.05, delay: i * 0.3, cut: 2000 });
+        break;
+      case 'plow':
+        this.tone(185, 1.2, { type: 'sawtooth', vol: 0.08, cut: 900, attack: 0.05 });
+        this.tone(233, 1.2, { type: 'sawtooth', vol: 0.05, cut: 900, attack: 0.05 });
+        break;
+      case 'hoverbus':
+        this.tone(300, 0.8, { type: 'sawtooth', vol: 0.05, slide: 600, cut: 2500 });
+        this.tone(900, 0.5, { type: 'sine', vol: 0.05, slide: -300, delay: 0.3 });
+        break;
+      case 'camels':
+        for (let i = 0; i < 2; i++) this.tone(150, 0.45, { type: 'sawtooth', vol: 0.08, slide: -60, delay: i * 0.5, cut: 700 });
+        break;
+      case 'floats':
+        for (let i = 0; i < 3; i++) this.tone(90, 0.3, { vol: 0.35, slide: -40, delay: i * 0.22 });
+        this.tone(1320, 0.8, { type: 'triangle', vol: 0.05, delay: 0.1, attack: 0.05 });
+        break;
+      case 'elephants':
+        this.tone(520, 0.9, { type: 'sawtooth', vol: 0.08, slide: 380, cut: 3000, attack: 0.04 });
+        this.tone(530, 0.9, { type: 'square', vol: 0.03, slide: 360, cut: 2000, attack: 0.04 });
+        break;
+      case 'tortoises':
+        this.burst(1.4, { vol: 0.4, freq: 200, q: 0.8, type: 'lowpass', attack: 0.1 });
+        this.tone(70, 1.2, { type: 'sawtooth', vol: 0.1, slide: -20, cut: 400, attack: 0.1 });
+        break;
+      case 'rovers':
+        [1760, 1320, 1760, 2093].forEach((f, i) => this.tone(f, 0.1, { type: 'square', vol: 0.03, delay: i * 0.12 }));
+        break;
+      default:
+        this.horn();
+    }
+  }
+
   clack() {
     this.burst(0.05, { vol: 0.18, freq: 1100, q: 2 });
     this.tone(140, 0.06, { vol: 0.15, slide: -50 });

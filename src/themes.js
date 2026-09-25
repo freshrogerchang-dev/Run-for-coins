@@ -2,6 +2,8 @@
 export const THEMES = {
   city: {
     id: 'city',
+    vehicle: 'train',
+    track: 'rail',
     name: '城市鐵道',
     en: 'CITY LINE',
     swatch: ['#3f86d8', '#f3d9b8'],
@@ -22,6 +24,8 @@ export const THEMES = {
   },
   seaside: {
     id: 'seaside',
+    vehicle: 'bus',
+    track: 'road',
     name: '海岸線',
     en: 'OCEAN LINE',
     swatch: ['#1fa2e0', '#ffe9b0'],
@@ -42,6 +46,8 @@ export const THEMES = {
   },
   tunnel: {
     id: 'tunnel',
+    vehicle: 'train',
+    track: 'rail',
     name: '地鐵隧道',
     en: 'UNDERGROUND',
     swatch: ['#1b1f27', '#ffb347'],
@@ -62,6 +68,8 @@ export const THEMES = {
   },
   snow: {
     id: 'snow',
+    vehicle: 'plow',
+    track: 'snowroad',
     name: '雪山列車',
     en: 'SNOW PEAK',
     swatch: ['#9cc3e6', '#ffffff'],
@@ -82,6 +90,8 @@ export const THEMES = {
   },
   neon: {
     id: 'neon',
+    vehicle: 'hoverbus',
+    track: 'neonroad',
     name: '霓虹夜城',
     en: 'NEON NIGHT',
     swatch: ['#1a1240', '#ff3db5'],
@@ -102,6 +112,8 @@ export const THEMES = {
   },
   desert: {
     id: 'desert',
+    vehicle: 'camels',
+    track: 'dirt',
     name: '沙漠峽谷',
     en: 'CANYON RUN',
     swatch: ['#e0773a', '#ffd89a'],
@@ -119,6 +131,8 @@ export const THEMES = {
   },
   sakura: {
     id: 'sakura',
+    vehicle: 'floats',
+    track: 'stone',
     name: '櫻花古都',
     en: 'SAKURA TOWN',
     swatch: ['#ffb7d0', '#fff4f8'],
@@ -136,6 +150,8 @@ export const THEMES = {
   },
   jungle: {
     id: 'jungle',
+    vehicle: 'elephants',
+    track: 'mud',
     name: '熱帶雨林',
     en: 'JUNGLE LINE',
     swatch: ['#1f6b3a', '#9be15d'],
@@ -153,6 +169,8 @@ export const THEMES = {
   },
   volcano: {
     id: 'volcano',
+    vehicle: 'tortoises',
+    track: 'basalt',
     name: '火山熔岩',
     en: 'LAVA LINE',
     swatch: ['#2a1210', '#ff5a1f'],
@@ -170,13 +188,15 @@ export const THEMES = {
   },
   space: {
     id: 'space',
+    vehicle: 'rovers',
+    track: 'metal',
     name: '太空基地',
     en: 'STAR BASE',
     swatch: ['#05060f', '#6f7cff'],
     sky: { horizon: '#1b2150', zenith: '#010208', glow: '#8fa0ff', sunDir: [-0.6, 0.35, -1], cloud: 0, stars: 1 },
     fog: { color: '#141836', near: 70, far: 320 },
     hemi: { sky: '#8a9cff', ground: '#2a2a35', intensity: 0.55 },
-    sun: { color: '#ffffff', intensity: 3.4, offset: [-16, 22, 12] },
+    sun: { color: '#ffffff', intensity: 2.7, offset: [-16, 22, 12] },
     exposure: 1.1,
     bloom: 0.8,
     envIntensity: 0.6,

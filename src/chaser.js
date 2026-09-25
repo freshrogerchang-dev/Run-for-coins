@@ -144,8 +144,9 @@ export class Chaser {
     if (escaped) this.alerted = false;
     if (!visible) return escaped;
 
-    this.guard.position.set(this.x - 0.2, GROUND, z);
-    this.dog.position.set(this.x + 0.75, GROUND, z - 0.9);
+    // 站在玩家斜後方，不擋住鏡頭看玩家
+    this.guard.position.set(this.x - 1.15, GROUND, z);
+    this.dog.position.set(this.x + 1.15, GROUND, z - 0.9);
     const speed = running ? S.speed : 0;
     this.phase += dt * (running ? 4 + speed * 0.2 : 0);
     const sw = Math.sin(this.phase);

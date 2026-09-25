@@ -918,3 +918,163 @@ export function hullGlowTexture() {
   }
   return toTexture(c);
 }
+
+// ---------- 道路 / 小徑（非鐵道場景的路面） ----------
+// 寬 8.4m、長 8m 為一個貼圖單位；三條車道中心在 x = -2.5 / 0 / 2.5
+export function roadTexture(style) {
+  const W = 256;
+  const H = 256;
+  const [c, ctx] = makeCanvas(W, H);
+  const [e, ectx] = makeCanvas(W, H);
+  ectx.fillStyle = '#000';
+  ectx.fillRect(0, 0, W, H);
+  const xOf = (m) => ((m + 4.2) / 8.4) * W; // 公尺 → 像素
+  const base = {
+    road: '#4a4d52',
+    snowroad: '#8d96a0',
+    neonroad: '#1c1a26',
+    dirt: '#c79a64',
+    stone: '#a9a39a',
+    mud: '#6b5a3c',
+    basalt: '#2e2826',
+    metal: '#7c828c',
+  }[style];
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, W, H);
+  noise(ctx, W, H, 4000, 0.18, false);
+  noise(ctx, W, H, 2000, 0.1, true);
+
+  const dashes = (color, emit) => {
+    for (const m of [-1.25, 1.25]) {
+      for (let y = 0; y < H; y += 64) {
+        ctx.fillStyle = color;
+        ctx.fillRect(xOf(m) - 2, y + 8, 4, 36);
+        if (emit) {
+          ectx.fillStyle = emit;
+          ectx.fillRect(xOf(m) - 2, y + 8, 4, 36);
+        }
+      }
+    }
+    for (const m of [-3.95, 3.95]) {
+      ctx.fillStyle = color;
+      ctx.fillRect(xOf(m) - 2, 0, 4, H);
+      if (emit) {
+        ectx.fillStyle = emit;
+        ectx.fillRect(xOf(m) - 2, 0, 4, H);
+      }
+    }
+  };
+  const ruts = (color, alpha) => {
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = color;
+    for (const m of [-2.5, 0, 2.5]) {
+      for (const d of [-0.6, 0.6]) ctx.fillRect(xOf(m + d) - 5, 0, 10, H);
+    }
+    ctx.globalAlpha = 1;
+  };
+
+  switch (style) {
+    case 'road':
+      dashes('#f4f1e8');
+      break;
+    case 'snowroad':
+      ruts('#6f7780', 0.5);
+      for (let i = 0; i < 90; i++) {
+        ctx.fillStyle = `rgba(250,252,255,${rand(0.4, 0.9)})`;
+        ctx.beginPath();
+        ctx.ellipse(Math.random() * W, Math.random() * H, rand(6, 22), rand(3, 9), 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      for (const m of [-3.95, 3.95]) {
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillRect(xOf(m) - 10, 0, 20, H);
+      }
+      break;
+    case 'neonroad':
+      dashes('#ff3db5', '#ff3db5');
+      for (const m of [-3.95, 3.95]) {
+        ctx.fillStyle = '#3dfcff';
+        ctx.fillRect(xOf(m) - 2, 0, 4, H);
+        ectx.fillStyle = '#3dfcff';
+        ectx.fillRect(xOf(m) - 2, 0, 4, H);
+      }
+      // 路面反光
+      for (let i = 0; i < 30; i++) {
+        ctx.fillStyle = `rgba(160,120,255,${rand(0.05, 0.15)})`;
+        ctx.fillRect(Math.random() * W, Math.random() * H, rand(2, 6), rand(20, 60));
+      }
+      break;
+    case 'dirt':
+      ruts('#a57a4a', 0.55);
+      for (let i = 0; i < 60; i++) {
+        ctx.fillStyle = 'rgba(120,85,50,0.35)';
+        ctx.beginPath();
+        ctx.ellipse(Math.random() * W, Math.random() * H, 3, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    case 'stone':
+      for (let y = 0; y < H; y += 32) {
+        const off = (y / 32) % 2 ? 16 : 0;
+        for (let x = -32; x < W; x += 32) {
+          const v = 150 + Math.random() * 30;
+          ctx.fillStyle = `rgb(${v},${v - 4},${v - 10})`;
+          ctx.fillRect(x + off + 2, y + 2, 28, 28);
+        }
+      }
+      noise(ctx, W, H, 1500, 0.12, false);
+      break;
+    case 'mud':
+      ruts('#4f4128', 0.6);
+      for (let i = 0; i < 70; i++) {
+        ctx.fillStyle = `rgba(${pick(['70,110,40', '90,130,50', '60,90,30'])},0.7)`;
+        ctx.beginPath();
+        ctx.ellipse(Math.random() * W, Math.random() * H, rand(3, 7), rand(2, 4), Math.random() * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    case 'basalt':
+      ctx.strokeStyle = '#ff6a1a';
+      ectx.strokeStyle = '#ff6a1a';
+      for (let i = 0; i < 16; i++) {
+        let x = Math.random() * W;
+        let y = Math.random() * H;
+        ctx.lineWidth = ectx.lineWidth = rand(1.5, 3);
+        ctx.beginPath();
+        ectx.beginPath();
+        ctx.moveTo(x, y);
+        ectx.moveTo(x, y);
+        for (let k = 0; k < 5; k++) {
+          x += rand(-24, 24);
+          y += rand(-24, 24);
+          ctx.lineTo(x, y);
+          ectx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ectx.stroke();
+      }
+      break;
+    case 'metal':
+      ctx.strokeStyle = 'rgba(40,45,55,0.8)';
+      ctx.lineWidth = 2;
+      for (let y = 0; y <= H; y += 64) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+      for (let x = 0; x <= W; x += 64) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, H);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#50565f';
+      for (let y = 6; y < H; y += 64) for (let x = 6; x < W; x += 64) ctx.fillRect(x, y, 4, 4);
+      dashes('#5ef1ff', '#5ef1ff');
+      break;
+  }
+  const map = toTexture(c);
+  const emissiveMap = toTexture(e);
+  return { map, emissiveMap, emissive: ['neonroad', 'metal', 'basalt'].includes(style) };
+}

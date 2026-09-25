@@ -58,11 +58,15 @@ export class Level {
 
   // ---------- 物件建立 ----------
   addTrain(lane, zFront, cars, { moving = false, decorative = false } = {}) {
-    const { group, length } = this.models.train(cars, { lit: moving });
+    // 依所在場景決定是列車、巴士還是動物
+    const vehicle = this.themeAt?.(zFront)?.vehicle || 'train';
+    const { group, length, legs } = this.models.train(cars, { lit: moving, kind: vehicle });
     group.position.set(LANES[lane], 0, zFront);
     this.scene.add(group);
     const o = {
       kind: 'train',
+      vehicle,
+      legs: legs || [],
       lane,
       x: LANES[lane],
       halfW: TRAIN_W / 2,
@@ -363,12 +367,22 @@ export class Level {
         if (o.active) {
           o.zFront += MOVING_TRAIN_SPEED * dt;
           o.mesh.position.z = o.zFront;
+          // 動物走路：腿前後擺動、身體上下起伏
+          if (o.legs.length) {
+            for (const l of o.legs) l.pivot.rotation.x = Math.sin(time * 5 + l.phase) * 0.45;
+            o.mesh.position.y = Math.abs(Math.sin(time * 5)) * 0.06;
+          }
           if (!o.horned && playerZ - o.zFront < 70) {
             o.horned = true;
-            this.sfx?.horn();
+            this.sfx?.vehicleCall(o.vehicle);
           }
         }
       }
+    }
+
+    // 懸浮巴士上下浮動
+    for (const o of this.obstacles) {
+      if (o.vehicle === 'hoverbus') o.mesh.position.y = Math.sin(time * 2 + o.zFront * 0.1) * 0.08;
     }
 
     // 回收已經在玩家身後的物件

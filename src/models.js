@@ -11,6 +11,7 @@ import {
   glowTexture,
 } from './textures.js';
 import { CAR_LEN, CAR_GAP, TRAIN_W, TRAIN_TOP, RAMP_LEN } from './config.js';
+import { VehicleModels } from './vehicles.js';
 
 // 依材質分組收集幾何，最後合併成少量 Mesh，降低 draw call
 class MergeBuilder {
@@ -149,7 +150,12 @@ export class Models {
   }
 
   // 一列火車：原點在車頭最前端（z=0），往 -z 延伸
-  train(cars, { livery = LIVERIES[(Math.random() * LIVERIES.length) | 0], lit = false } = {}) {
+  train(cars, { livery = LIVERIES[(Math.random() * LIVERIES.length) | 0], lit = false, kind = 'train' } = {}) {
+    // 其他場景用各自的交通工具或動物
+    if (kind !== 'train') {
+      this.vehicles ??= new VehicleModels(this.glowMat);
+      return this.vehicles.make(kind, cars, { lit });
+    }
     const group = new THREE.Group();
     for (let i = 0; i < cars; i++) {
       const templ = this.car(livery, i === 0, i === cars - 1, lit);
