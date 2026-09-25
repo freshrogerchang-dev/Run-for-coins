@@ -733,3 +733,188 @@ export function plankTexture(color) {
   noise(ctx, 128, 128, 500, 0.12, false);
   return toTexture(c);
 }
+
+// ---------- 月球表面 ----------
+export function moonTexture() {
+  const [c, ctx] = makeCanvas(512, 512);
+  ctx.fillStyle = '#9b9994';
+  ctx.fillRect(0, 0, 512, 512);
+  noise(ctx, 512, 512, 12000, 0.18, false);
+  noise(ctx, 512, 512, 6000, 0.12, true);
+  for (let i = 0; i < 26; i++) {
+    const x = Math.random() * 512;
+    const y = Math.random() * 512;
+    const r = rand(6, 34);
+    const g = ctx.createRadialGradient(x - r * 0.2, y - r * 0.2, r * 0.2, x, y, r);
+    g.addColorStop(0, 'rgba(60,58,55,0.45)');
+    g.addColorStop(0.8, 'rgba(80,78,75,0.2)');
+    g.addColorStop(1, 'rgba(230,228,224,0.35)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return toTexture(c);
+}
+
+// ---------- 砂岩層理（峽谷台地） ----------
+export function strataTexture() {
+  const [c, ctx] = makeCanvas(128, 256);
+  const bands = ['#c8643a', '#d9824f', '#b5532f', '#e39a62', '#a94a2a', '#d17446', '#e8b07a'];
+  let y = 0;
+  while (y < 256) {
+    const h = rand(8, 30);
+    ctx.fillStyle = pick(bands);
+    ctx.fillRect(0, y, 128, h);
+    y += h;
+  }
+  noise(ctx, 128, 256, 1500, 0.15, false);
+  for (let i = 0; i < 30; i++) {
+    ctx.fillStyle = 'rgba(90,40,20,0.25)';
+    ctx.fillRect(Math.random() * 128, Math.random() * 256, rand(1, 3), rand(10, 60));
+  }
+  return toTexture(c);
+}
+
+// ---------- 熔岩（發光） ----------
+export function lavaTexture() {
+  const [c, ctx] = makeCanvas(256, 256);
+  ctx.fillStyle = '#ff5a00';
+  ctx.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 70; i++) {
+    const x = Math.random() * 256;
+    const y = Math.random() * 256;
+    const r = rand(10, 40);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    const hot = Math.random() < 0.4;
+    g.addColorStop(0, hot ? 'rgba(255,230,120,0.9)' : 'rgba(60,10,5,0.85)');
+    g.addColorStop(1, hot ? 'rgba(255,160,40,0)' : 'rgba(90,20,5,0)');
+    ctx.fillStyle = g;
+    for (const [dx, dy] of [[0, 0], [256, 0], [-256, 0], [0, 256], [0, -256]]) {
+      ctx.save();
+      ctx.translate(dx, dy);
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      ctx.restore();
+    }
+  }
+  // 冷卻裂紋
+  ctx.strokeStyle = 'rgba(30,5,0,0.6)';
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 14; i++) {
+    ctx.beginPath();
+    let x = Math.random() * 256;
+    let y = Math.random() * 256;
+    ctx.moveTo(x, y);
+    for (let k = 0; k < 6; k++) {
+      x += rand(-30, 30);
+      y += rand(-30, 30);
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  return toTexture(c);
+}
+
+// ---------- 瀑布 ----------
+export function waterfallTexture() {
+  const [c, ctx] = makeCanvas(128, 256);
+  const g = ctx.createLinearGradient(0, 0, 128, 0);
+  g.addColorStop(0, 'rgba(160,215,235,0.75)');
+  g.addColorStop(0.5, 'rgba(230,248,255,0.95)');
+  g.addColorStop(1, 'rgba(160,215,235,0.75)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 256);
+  for (let i = 0; i < 120; i++) {
+    ctx.fillStyle = `rgba(255,255,255,${rand(0.3, 0.9)})`;
+    ctx.fillRect(Math.random() * 128, Math.random() * 256, rand(1, 4), rand(20, 70));
+  }
+  return toTexture(c);
+}
+
+// ---------- 和風白牆 + 木框 ----------
+export function plasterTexture() {
+  const [c, ctx] = makeCanvas(256, 128);
+  ctx.fillStyle = '#f3ede2';
+  ctx.fillRect(0, 0, 256, 128);
+  noise(ctx, 256, 128, 1200, 0.06, false);
+  ctx.fillStyle = '#4a2f22';
+  for (let x = 0; x <= 256; x += 64) ctx.fillRect(x - 5, 0, 10, 128);
+  ctx.fillRect(0, 0, 256, 10);
+  ctx.fillRect(0, 60, 256, 7);
+  ctx.fillRect(0, 118, 256, 10);
+  return toTexture(c);
+}
+
+// ---------- 屋瓦 ----------
+export function roofTileTexture(color = '#3c4450') {
+  const [c, ctx] = makeCanvas(128, 128);
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, 128, 128);
+  for (let x = 0; x < 128; x += 16) {
+    const g = ctx.createLinearGradient(x, 0, x + 16, 0);
+    g.addColorStop(0, 'rgba(0,0,0,0.35)');
+    g.addColorStop(0.5, 'rgba(255,255,255,0.12)');
+    g.addColorStop(1, 'rgba(0,0,0,0.35)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x, 0, 16, 128);
+  }
+  for (let y = 0; y < 128; y += 21) {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(0, y, 128, 2);
+  }
+  return toTexture(c);
+}
+
+// ---------- 太陽能板 ----------
+export function solarTexture() {
+  const [c, ctx] = makeCanvas(128, 128);
+  ctx.fillStyle = '#c9ced6';
+  ctx.fillRect(0, 0, 128, 128);
+  for (let y = 0; y < 4; y++) {
+    for (let x = 0; x < 4; x++) {
+      const g = ctx.createLinearGradient(x * 32, y * 32, x * 32 + 30, y * 32 + 30);
+      g.addColorStop(0, '#1d3a8a');
+      g.addColorStop(1, '#0e1d4a');
+      ctx.fillStyle = g;
+      ctx.fillRect(x * 32 + 2, y * 32 + 2, 28, 28);
+    }
+  }
+  return toTexture(c);
+}
+
+// ---------- 太空艙外殼 ----------
+export function hullTexture() {
+  const [c, ctx] = makeCanvas(256, 128);
+  ctx.fillStyle = '#e4e7ec';
+  ctx.fillRect(0, 0, 256, 128);
+  ctx.strokeStyle = 'rgba(60,70,90,0.35)';
+  ctx.lineWidth = 2;
+  for (let x = 0; x < 256; x += 64) ctx.strokeRect(x + 2, 2, 60, 124);
+  ctx.fillStyle = '#ff6a2a';
+  ctx.fillRect(0, 92, 256, 8);
+  // 舷窗
+  for (let x = 32; x < 256; x += 64) {
+    ctx.fillStyle = '#1a2440';
+    ctx.beginPath();
+    ctx.arc(x, 48, 16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#9aa3b5';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+  }
+  noise(ctx, 256, 128, 800, 0.08, false);
+  return toTexture(c);
+}
+
+export function hullGlowTexture() {
+  const [c, ctx] = makeCanvas(256, 128);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, 256, 128);
+  for (let x = 32; x < 256; x += 64) {
+    ctx.fillStyle = Math.random() < 0.7 ? '#9fd8ff' : '#ffd27a';
+    ctx.beginPath();
+    ctx.arc(x, 48, 13, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return toTexture(c);
+}

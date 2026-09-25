@@ -20,6 +20,7 @@ import {
   PLAYER_HALF_D,
   PLAYER_H,
   PLAYER_SLIDE_H,
+  TRAIN_TOP,
 } from './config.js';
 
 const $ = (id) => document.getElementById(id);
@@ -118,6 +119,7 @@ function resetRun() {
     camY: 3.4,
     lastBump: -10,
     onTrain: false,
+    floorY: GROUND,
     milestone: 0,
     clackT: 0,
   });
@@ -266,6 +268,7 @@ function stepPlaying(dt) {
   }
 
   S.onTrain = onTrain;
+  S.floorY = support;
   if (S.y <= support && S.vy <= 0) {
     if (!S.grounded && S.vy < -12) sfx.land(surface());
     S.y = support;
@@ -351,7 +354,9 @@ function updateCamera(dt) {
   menuPos.set(Math.sin(t * 0.25) * 2.6 + 1.4, 1.9 + Math.sin(t * 0.4) * 0.15, S.z - 4.6);
   menuLook.set(0.2, 1.15, S.z);
 
-  S.camY = damp(S.camY, 3.7 + Math.max(0, S.y - GROUND) * 0.72, 6, dt);
+  // 在車頂時鏡頭整個升上去（避開電車線），跳躍只跟一半
+  const floorY = S.mode === 'menu' ? GROUND : Math.min(TRAIN_TOP, S.floorY ?? GROUND);
+  S.camY = damp(S.camY, 3.7 + (floorY - GROUND) + Math.max(0, S.y - floorY) * 0.5, 6, dt);
   followPos.set(S.x * 0.7, S.camY, S.z + 7.2);
   followLook.set(S.x * 0.85, S.camY - 2.0, S.z - 9);
 

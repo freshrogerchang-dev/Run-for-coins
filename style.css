@@ -240,7 +240,7 @@ button:focus-visible {
 
 .scene-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
 }
 
@@ -248,7 +248,7 @@ button:focus-visible {
   display: grid;
   justify-items: center;
   gap: 5px;
-  padding: 7px 4px 6px;
+  padding: 6px 3px 5px;
   border: 2px solid transparent;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.06);
@@ -269,13 +269,13 @@ button:focus-visible {
 
 .scene-grid i {
   width: 100%;
-  height: 22px;
+  height: 18px;
   border-radius: 6px;
   background: var(--sw, #444);
 }
 
 .scene-grid .tour i {
-  background: linear-gradient(90deg, #3f86d8, #1fa2e0, #1b1f27, #9cc3e6, #ff3db5);
+  background: linear-gradient(90deg, #3f86d8, #1fa2e0, #1b1f27, #9cc3e6, #ff3db5, #e0773a, #ffb7d0, #1f6b3a, #ff5a1f, #05060f);
 }
 
 .scene-note {
@@ -395,7 +395,7 @@ button:focus-visible {
 }
 
 .start-card {
-  width: min(380px, 100%);
+  width: min(400px, 100%);
   display: grid;
   gap: 16px;
   padding: 20px;

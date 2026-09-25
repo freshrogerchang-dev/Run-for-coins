@@ -32,7 +32,7 @@ function atmosphereOf(t) {
     exposure: t.exposure,
     bloom: t.bloom,
     envIntensity: t.envIntensity,
-    snow: t.snow,
+    snow: t.particles ? 1 : 0,
   };
 }
 
@@ -312,12 +312,35 @@ export class Stage {
 
   setTheme(theme, instant = false) {
     this.atmoTarget = atmosphereOf(theme);
-    if (instant) this.applyAtmosphere(1);
+    this.pendingParticles = theme.particles;
+    if (instant) {
+      this.setParticleStyle(theme.particles);
+      this.applyAtmosphere(1);
+    }
+  }
+
+  // 天氣粒子樣式：雪、櫻花瓣、火山火星、雨林孢子
+  setParticleStyle(style) {
+    this.particleStyle = style;
+    if (!style) return;
+    const m = this.snow.material;
+    m.color.set(style.color);
+    m.size = style.size;
+    const glow = style.type === 'embers' || style.type === 'spores';
+    m.blending = glow ? THREE.AdditiveBlending : THREE.NormalBlending;
+    if (glow) m.color.multiplyScalar(2.2);
+    m.needsUpdate = true;
   }
 
   applyAtmosphere(k) {
     const a = this.atmo;
     const t = this.atmoTarget;
+    // 換粒子樣式時先淡出，再換樣式淡入
+    if (this.pendingParticles !== this.particleStyle) {
+      if (a.snow < 0.05 || !this.particleStyle) this.setParticleStyle(this.pendingParticles);
+      else t.snow = 0;
+    }
+    if (this.particleStyle && this.pendingParticles === this.particleStyle) t.snow = 1;
     for (const key of Object.keys(a)) {
       if (typeof a[key] === 'number') a[key] += (t[key] - a[key]) * k;
       else a[key].lerp(t[key], k);
@@ -355,13 +378,18 @@ export class Stage {
     if (this.snow.visible) {
       const p = this.snowOffsets;
       const cam = this.camera.position;
-      const fall = dt * 2.2;
+      const type = this.particleStyle?.type || 'snow';
+      const fallRate = { snow: 2.2, petals: 1.1, embers: -2.6, spores: 0.15 }[type];
+      const sway = { snow: 0.4, petals: 1.8, embers: 0.7, spores: 0.6 }[type];
+      const fall = dt * fallRate;
       const drift = dt * ((this.runSpeed || 0) + 1);
       for (let i = 0; i < p.length; i += 3) {
         p[i + 1] -= fall * (0.7 + ((i * 7) % 10) / 20);
-        p[i] += Math.sin(time * 0.8 + i) * dt * 0.4;
+        if (type === 'spores') p[i + 1] += Math.sin(time * 0.9 + i * 0.37) * dt * 0.5;
+        p[i] += Math.sin(time * 0.8 + i) * dt * sway;
         p[i + 2] += drift;
         if (p[i + 1] < 0) p[i + 1] += 18;
+        if (p[i + 1] > 18) p[i + 1] -= 18;
         if (p[i + 2] > 8) p[i + 2] -= 70;
       }
       this.snow.position.set(cam.x, cam.y - 6, cam.z);

@@ -1,7 +1,8 @@
 // 無限循環的鐵道場景。每一段路（40m）共用軌道，外觀依主題切換：
-// 城市鐵道、海岸線、地鐵隧道、雪山列車、霓虹夜城
+// 城市鐵道、海岸線、地鐵隧道、雪山列車、霓虹夜城（其餘五個場景在 scenes-extra.js）
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { rand, pick, merged, mesh, roofGeometry } from './geo.js';
+import { EXTRA_BUILDERS, extraUpdate } from './scenes-extra.js';
 import {
   gravelTexture,
   woodTexture,
@@ -18,41 +19,13 @@ import {
   neonSignTexture,
   plankTexture,
   glowTexture,
+  moonTexture,
 } from './textures.js';
 import { LANES, SEG_LEN, SEG_COUNT } from './config.js';
 import { THEMES, THEME_ORDER, TOUR_LEN } from './themes.js';
 
-const rand = (a, b) => a + Math.random() * (b - a);
-const pick = (arr) => arr[(Math.random() * arr.length) | 0];
 const L = SEG_LEN;
 const HALF = -L / 2;
-
-function xform(g, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) {
-  const c = g.index ? g.toNonIndexed() : g.clone();
-  for (const name of Object.keys(c.attributes)) {
-    if (!['position', 'normal', 'uv'].includes(name)) c.deleteAttribute(name);
-  }
-  c.applyMatrix4(
-    new THREE.Matrix4().compose(
-      new THREE.Vector3(x, y, z),
-      new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)),
-      new THREE.Vector3(sx, sy, sz),
-    ),
-  );
-  return c;
-}
-
-// list 裡每一項：[geometry, x, y, z, rx, ry, rz, sx, sy, sz]
-function merged(list) {
-  return mergeGeometries(list.map((args) => xform(...args)));
-}
-
-function mesh(geo, mat, { cast = false, receive = true } = {}) {
-  const m = new THREE.Mesh(geo, mat);
-  m.castShadow = cast;
-  m.receiveShadow = receive;
-  return m;
-}
 
 // 讓大樓貼圖的窗戶尺寸固定（1 個貼圖單位 = 12m）
 function buildingGeometry(w, h, d) {
@@ -70,15 +43,6 @@ function buildingGeometry(w, h, d) {
     }
   }
   g.translate(0, h / 2, 0);
-  return g;
-}
-
-// 三角柱屋頂（屋脊沿 z 軸）
-function roofGeometry(w, d, h) {
-  const g = new THREE.CylinderGeometry(1, 1, 1, 3);
-  g.rotateX(-Math.PI / 2);
-  g.scale(w / 1.73, h / 1.5, d);
-  g.translate(0, h / 3, 0);
   return g;
 }
 
@@ -205,10 +169,15 @@ export class Environment {
     ballastTex.repeat.set(1, 18);
     const snow = snowTexture();
     snow.repeat.set(20, 6);
+    const sandGround = sandTexture();
+    sandGround.repeat.set(18, 5);
+    const moon = moonTexture();
+    moon.repeat.set(10, 5);
+    const groundTex = { gravel, snow, sand: sandGround, moon };
     for (const id of THEME_ORDER) {
       const t = THEMES[id];
       this.groundMats[id] = new THREE.MeshStandardMaterial({
-        map: id === 'snow' ? snow : gravel,
+        map: groundTex[t.ground.tex] || gravel,
         color: t.ground.color,
         roughness: t.ground.roughness,
       });
@@ -633,7 +602,8 @@ export class Environment {
   decorFor(seg, id) {
     const d = seg.userData.decor;
     if (!d[id]) {
-      d[id] = this[`build_${id}`]();
+      const build = this[`build_${id}`] || EXTRA_BUILDERS[id];
+      d[id] = build.call(this);
       seg.add(d[id].group);
     }
     return d[id];
@@ -1074,7 +1044,10 @@ export class Environment {
     this.time += dt;
     this.waterNormal.offset.set(this.time * 0.012, -this.time * 0.02);
     this.mat.foam.opacity = 0.4 + Math.sin(this.time * 1.3) * 0.2;
+    extraUpdate(this, dt, playerZ);
     for (const seg of this.segments) {
+      const decor = seg.userData.decor[seg.userData.theme];
+      if (decor?.tick) decor.tick(dt, this.time);
       if (seg.position.z - L > playerZ + 25) {
         seg.position.z -= SEG_COUNT * L;
         this.applyTheme(seg);
