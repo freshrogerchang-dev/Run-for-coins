@@ -70,6 +70,11 @@ async function waitFonts() {
 await waitFonts();
 
 const stage = new Stage($('game'));
+const QUALITY = { high: '高', balanced: '平衡', saver: '省電' };
+const QUALITY_ORDER = ['high', 'balanced', 'saver'];
+let quality = store.get('quality', stage.ios ? 'balanced' : 'high');
+if (!QUALITY[quality]) quality = 'high';
+stage.setQuality(quality);
 const models = new Models();
 const sfx = new Sfx();
 sfx.setMuted(store.get('muted', false));
@@ -1068,6 +1073,22 @@ $('boardBtn').addEventListener('click', (e) => {
   useBoard();
 });
 $('reviveBtn').addEventListener('click', doRevive);
+
+function renderQuality() {
+  for (const b of document.querySelectorAll('.quality-btn')) b.querySelector('b').textContent = QUALITY[quality];
+}
+for (const b of document.querySelectorAll('.quality-btn')) {
+  b.addEventListener('click', () => {
+    sfx.ensure();
+    sfx.click();
+    quality = QUALITY_ORDER[(QUALITY_ORDER.indexOf(quality) + 1) % QUALITY_ORDER.length];
+    store.set('quality', quality);
+    stage.setQuality(quality);
+    renderQuality();
+    if (S.mode === 'paused') stage.render();
+  });
+}
+renderQuality();
 $('giveUpBtn').addEventListener('click', declineRevive);
 
 function bumpCoinHud() {

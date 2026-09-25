@@ -16,7 +16,8 @@ const SanitizeShader = {
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
     varying vec2 vUv;
-    bool bad(float v) { return !(v == v) || abs(v) > 60000.0; }
+    // 用位元判斷 NaN / Inf：Safari 的 Metal 編譯器可能把 v != v 最佳化掉，位元運算不會
+    bool bad(float v) { return (floatBitsToUint(v) & 0x7f800000u) == 0x7f800000u || abs(v) > 60000.0; }
     void main() {
       vec4 c = texture2D(tDiffuse, vUv);
       if (bad(c.r) || bad(c.g) || bad(c.b) || bad(c.a)) c = vec4(0.0, 0.0, 0.0, 1.0);
@@ -58,6 +59,8 @@ export class Stage {
   constructor(container) {
     const mobile = matchMedia('(pointer: coarse)').matches || Math.min(innerWidth, innerHeight) < 600;
     this.mobile = mobile;
+    // iPad（新版會偽裝成 Mac）與 iPhone
+    this.ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
     renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.5 : 2));
     renderer.setSize(innerWidth, innerHeight);
@@ -221,7 +224,8 @@ export class Stage {
     composer.setPixelRatio(this.renderer.getPixelRatio());
     composer.setSize(size.x, size.y);
     composer.addPass(new RenderPass(this.scene, this.camera));
-    composer.addPass(new ShaderPass(SanitizeShader));
+    this.sanitize = new ShaderPass(SanitizeShader);
+    composer.addPass(this.sanitize);
     this.bloom = new UnrealBloomPass(size.clone().multiplyScalar(0.5), 0.45, 0.55, 0.92);
     composer.addPass(this.bloom);
     composer.addPass(new OutputPass());
@@ -313,7 +317,7 @@ export class Stage {
     for (let i = 0; i < N; i++) {
       pos[i * 3] = (Math.random() - 0.5) * 50;
       pos[i * 3 + 1] = Math.random() * 18;
-      pos[i * 3 + 2] = -Math.random() * 70 + 8;
+      pos[i * 3 + 2] = -2 - Math.random() * 66;
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -487,7 +491,8 @@ export class Stage {
         p[i + 2] += drift;
         if (p[i + 1] < 0) p[i + 1] += 18;
         if (p[i + 1] > 18) p[i + 1] -= 18;
-        if (p[i + 2] > 8) p[i + 2] -= 70;
+        // 不讓粒子貼近鏡頭：太近時點的大小會除以接近 0 的數，在 iPad 上變成巨大方塊
+        if (p[i + 2] > -2) p[i + 2] -= 66;
       }
       this.snow.position.set(cam.x, cam.y - 6, cam.z);
       this.snow.geometry.attributes.position.needsUpdate = true;
@@ -530,6 +535,19 @@ export class Stage {
 
   render() {
     this.composer.render();
+  }
+
+  // 畫質：high = Bloom 光暈 + 高解析；balanced = 關閉 Bloom；saver = 關閉 Bloom 與陰影、降低解析度
+  setQuality(level) {
+    this.quality = level;
+    this.bloom.enabled = level === 'high';
+    this.sanitize.enabled = level === 'high';
+    this.sun.castShadow = level !== 'saver';
+    const cap = level === 'saver' ? 1 : this.mobile ? 1.5 : 2;
+    const pr = Math.min(devicePixelRatio, cap);
+    this.renderer.setPixelRatio(pr);
+    this.composer.setPixelRatio(pr);
+    this.resize();
   }
 
   resize() {

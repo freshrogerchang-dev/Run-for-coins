@@ -1,7 +1,7 @@
 // 無限循環的鐵道場景。每一段路（40m）共用軌道，外觀依主題切換：
 // 城市鐵道、海岸線、地鐵隧道、雪山列車、霓虹夜城（其餘五個場景在 scenes-extra.js）
 import * as THREE from 'three';
-import { rand, pick, merged, mesh, roofGeometry } from './geo.js';
+import { rand, pick, merged, mesh, roofGeometry, fixNormals } from './geo.js';
 import { EXTRA_BUILDERS, extraUpdate } from './scenes-extra.js';
 import {
   gravelTexture,
@@ -531,7 +531,7 @@ export class Environment {
     hole.lineTo(R, -0.3);
     hole.closePath();
     portal.holes.push(hole);
-    G.portal = new THREE.ExtrudeGeometry(portal, { depth: 3, bevelEnabled: false }).translate(0, 0, -3);
+    G.portal = fixNormals(new THREE.ExtrudeGeometry(portal, { depth: 3, bevelEnabled: false }).translate(0, 0, -3));
     G.portalRim = new THREE.TorusGeometry(R + 0.35, 0.45, 6, 32, Math.PI).translate(0, WALL_H, 0.2);
     G.portalHills = merged([
       [new THREE.IcosahedronGeometry(40, 1), -62, -6, -30, 0, 0, 0, 1, 0.8, 1.3],
