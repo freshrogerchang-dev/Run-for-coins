@@ -35,6 +35,7 @@
         <span class="label">分數</span>
         <span id="score" class="num">0</span>
         <span id="dist" class="sub">0 m</span>
+        <span id="sceneName" class="scene-tag">城市鐵道</span>
       </div>
       <div class="hud-right">
         <div id="coinBox" class="coin-pill" aria-label="金幣">
@@ -47,6 +48,9 @@
       </div>
     </header>
 
+    <button id="musicBtn" class="icon-btn music-btn" aria-label="關閉音樂" aria-pressed="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17.5V6l10-2v11.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><circle cx="6.5" cy="17.5" r="2.5" /><circle cx="16.5" cy="15.5" r="2.5" /><path class="slash" d="M4 4l16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
+    </button>
     <button id="muteBtn" class="icon-btn mute-btn" aria-label="靜音" aria-pressed="false">
       <svg class="on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" /><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
       <svg class="off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" /><path d="M16.5 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
@@ -65,6 +69,18 @@
           <div><dt>最高分</dt><dd id="bestStart" class="num">0</dd></div>
           <div><dt>金幣存款</dt><dd id="bankStart" class="num">0</dd></div>
         </dl>
+        <fieldset class="scenes">
+          <legend>選擇場景</legend>
+          <div class="scene-grid" role="radiogroup" aria-label="選擇場景">
+            <button type="button" role="radio" data-scene="city" aria-checked="true"><i></i><span>城市鐵道</span></button>
+            <button type="button" role="radio" data-scene="seaside" aria-checked="false"><i></i><span>海岸線</span></button>
+            <button type="button" role="radio" data-scene="tunnel" aria-checked="false"><i></i><span>地鐵隧道</span></button>
+            <button type="button" role="radio" data-scene="snow" aria-checked="false"><i></i><span>雪山列車</span></button>
+            <button type="button" role="radio" data-scene="neon" aria-checked="false"><i></i><span>霓虹夜城</span></button>
+            <button type="button" role="radio" data-scene="tour" aria-checked="false" class="tour"><i></i><span>環遊模式</span></button>
+          </div>
+          <p class="scene-note">環遊模式每 800 公尺換一個場景</p>
+        </fieldset>
         <button id="startBtn" class="btn-primary">開始奔跑</button>
         <ul class="controls">
           <li><kbd>←</kbd><kbd>→</kbd><span>換軌道</span></li>
@@ -73,7 +89,7 @@
           <li><kbd>P</kbd><span>暫停</span></li>
         </ul>
         <p class="touch-hint">手機：左右滑換道，上滑跳，下滑鏟</p>
-        <p class="tip">踩上黃黑斜坡可以跑上車頂。迎面亮燈的列車會開過來！</p>
+        <p class="tip">踩上黃黑斜坡可以跑上車頂。迎面亮燈的列車會開過來，聽到喇叭聲就快換道！</p>
       </div>
     </section>
 

@@ -6,8 +6,35 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
+import { THEMES } from './themes.js';
+
 const HORIZON = new THREE.Color('#f3d9b8');
 const ZENITH = new THREE.Color('#3f86d8');
+
+// 把主題設定轉成可以內插的數值
+function atmosphereOf(t) {
+  return {
+    horizon: new THREE.Color(t.sky.horizon),
+    zenith: new THREE.Color(t.sky.zenith),
+    glow: new THREE.Color(t.sky.glow),
+    sunDir: new THREE.Vector3(...t.sky.sunDir).normalize(),
+    cloud: t.sky.cloud,
+    stars: t.sky.stars,
+    fogColor: new THREE.Color(t.fog.color),
+    fogNear: t.fog.near,
+    fogFar: t.fog.far,
+    hemiSky: new THREE.Color(t.hemi.sky),
+    hemiGround: new THREE.Color(t.hemi.ground),
+    hemiIntensity: t.hemi.intensity,
+    sunColor: new THREE.Color(t.sun.color),
+    sunIntensity: t.sun.intensity,
+    sunOffset: new THREE.Vector3(...t.sun.offset),
+    exposure: t.exposure,
+    bloom: t.bloom,
+    envIntensity: t.envIntensity,
+    snow: t.snow,
+  };
+}
 
 export class Stage {
   constructor(container) {
@@ -39,6 +66,11 @@ export class Stage {
     this.buildComposer(mobile);
     this.buildSparkles();
     this.buildSpeedLines();
+    this.buildSnow(mobile);
+
+    this.atmo = atmosphereOf(THEMES.city);
+    this.atmoTarget = atmosphereOf(THEMES.city);
+    this.applyAtmosphere(1);
 
     addEventListener('resize', () => this.resize());
   }
@@ -53,6 +85,9 @@ export class Stage {
         uHorizon: { value: HORIZON },
         uZenith: { value: ZENITH },
         uSunDir: { value: new THREE.Vector3(0.35, 0.16, -1).normalize() },
+        uGlow: { value: new THREE.Color('#ffbf73') },
+        uCloud: { value: 0.85 },
+        uStars: { value: 0 },
         uTime: { value: 0 },
       },
       vertexShader: /* glsl */ `
@@ -67,6 +102,9 @@ export class Stage {
         uniform vec3 uHorizon;
         uniform vec3 uZenith;
         uniform vec3 uSunDir;
+        uniform vec3 uGlow;
+        uniform float uCloud;
+        uniform float uStars;
         uniform float uTime;
         varying vec3 vDir;
         float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -86,15 +124,26 @@ export class Stage {
           vec3 col = mix(uHorizon, uZenith, pow(h, 0.55));
           // 太陽光暈
           float s = max(dot(d, uSunDir), 0.0);
-          col += vec3(1.0, 0.75, 0.45) * (pow(s, 6.0) * 0.35 + pow(s, 60.0) * 0.6);
-          col += vec3(1.0, 0.95, 0.85) * smoothstep(0.9975, 0.999, s) * 3.0;
+          col += uGlow * (pow(s, 6.0) * 0.35 + pow(s, 60.0) * 0.6);
+          col += mix(vec3(1.0, 0.95, 0.85), vec3(0.9, 0.95, 1.0), uStars) * smoothstep(0.9975, 0.999, s) * mix(3.0, 1.4, uStars);
+          // 星星（夜晚主題）
+          if (uStars > 0.0 && d.y > 0.0) {
+            vec2 sp = d.xz / (d.y + 0.35) * 90.0;
+            vec2 cell = floor(sp);
+            float r = hash(cell);
+            vec2 f = fract(sp) - 0.5 - (vec2(hash(cell + 7.1), hash(cell + 3.3)) - 0.5) * 0.6;
+            float star = step(0.985, r) * smoothstep(0.12, 0.0, length(f));
+            float tw = 0.6 + 0.4 * sin(uTime * 3.0 + r * 100.0);
+            col += vec3(1.0, 0.95, 1.0) * star * tw * uStars * smoothstep(0.02, 0.25, d.y) * 1.6;
+          }
           // 雲
-          if (d.y > 0.0) {
+          if (d.y > 0.0 && uCloud > 0.0) {
             vec2 uv = d.xz / (d.y + 0.08) * 1.6 + vec2(uTime * 0.01, 0.0);
             float c = fbm(uv);
             c = smoothstep(0.52, 0.8, c) * smoothstep(0.0, 0.18, d.y);
             vec3 cloudCol = mix(vec3(1.0, 0.93, 0.86), vec3(1.0), h);
-            col = mix(col, cloudCol + pow(s, 8.0) * vec3(0.3, 0.2, 0.1), c * 0.85);
+            cloudCol = mix(cloudCol, uHorizon * 0.7 + uGlow * 0.15, uStars);
+            col = mix(col, cloudCol + pow(s, 8.0) * uGlow * 0.3, c * uCloud);
           }
           if (d.y < 0.0) col = mix(uHorizon, uHorizon * 0.85, min(1.0, -d.y * 4.0));
           gl_FragColor = vec4(col, 1.0);
@@ -112,6 +161,7 @@ export class Stage {
   buildLights(mobile) {
     const hemi = new THREE.HemisphereLight('#cfe3ff', '#8a7057', 1.1);
     this.scene.add(hemi);
+    this.hemi = hemi;
     const sun = new THREE.DirectionalLight('#fff0d6', 3.1);
     sun.castShadow = true;
     const size = mobile ? 1024 : 2048;
@@ -226,9 +276,97 @@ export class Stage {
     return s;
   }
 
+  // 下雪粒子：在相機周圍循環
+  buildSnow(mobile) {
+    const N = mobile ? 700 : 1500;
+    const pos = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 50;
+      pos[i * 3 + 1] = Math.random() * 18;
+      pos[i * 3 + 2] = -Math.random() * 70 + 8;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const c = document.createElement('canvas');
+    c.width = c.height = 32;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.5, 'rgba(255,255,255,0.7)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 32, 32);
+    const mat = new THREE.PointsMaterial({
+      size: 0.16,
+      map: new THREE.CanvasTexture(c),
+      transparent: true,
+      depthWrite: false,
+      opacity: 0,
+      fog: false,
+    });
+    this.snow = new THREE.Points(geo, mat);
+    this.snow.frustumCulled = false;
+    this.snowOffsets = pos;
+    this.scene.add(this.snow);
+  }
+
+  setTheme(theme, instant = false) {
+    this.atmoTarget = atmosphereOf(theme);
+    if (instant) this.applyAtmosphere(1);
+  }
+
+  applyAtmosphere(k) {
+    const a = this.atmo;
+    const t = this.atmoTarget;
+    for (const key of Object.keys(a)) {
+      if (typeof a[key] === 'number') a[key] += (t[key] - a[key]) * k;
+      else a[key].lerp(t[key], k);
+    }
+    const u = this.sky.material.uniforms;
+    u.uHorizon.value.copy(a.horizon);
+    u.uZenith.value.copy(a.zenith);
+    u.uGlow.value.copy(a.glow);
+    u.uSunDir.value.copy(a.sunDir).normalize();
+    u.uCloud.value = a.cloud;
+    u.uStars.value = a.stars;
+    this.scene.fog.color.copy(a.fogColor);
+    this.scene.fog.near = a.fogNear;
+    this.scene.fog.far = a.fogFar;
+    this.scene.background.copy(a.fogColor);
+    this.hemi.color.copy(a.hemiSky);
+    this.hemi.groundColor.copy(a.hemiGround);
+    this.hemi.intensity = a.hemiIntensity;
+    this.sun.color.copy(a.sunColor);
+    this.sun.intensity = a.sunIntensity;
+    this.sunOffset.copy(a.sunOffset);
+    this.renderer.toneMappingExposure = a.exposure;
+    this.bloom.strength = a.bloom;
+    this.scene.environmentIntensity = a.envIntensity;
+    this.snow.material.opacity = a.snow * 0.9;
+    this.snow.visible = a.snow > 0.01;
+  }
+
   update(dt, focus, speedFactor, time) {
+    this.applyAtmosphere(1 - Math.exp(-dt * 1.4));
     this.sky.position.copy(this.camera.position);
     this.sky.material.uniforms.uTime.value = time;
+
+    // 雪花：跟著相機，往下飄並循環
+    if (this.snow.visible) {
+      const p = this.snowOffsets;
+      const cam = this.camera.position;
+      const fall = dt * 2.2;
+      const drift = dt * ((this.runSpeed || 0) + 1);
+      for (let i = 0; i < p.length; i += 3) {
+        p[i + 1] -= fall * (0.7 + ((i * 7) % 10) / 20);
+        p[i] += Math.sin(time * 0.8 + i) * dt * 0.4;
+        p[i + 2] += drift;
+        if (p[i + 1] < 0) p[i + 1] += 18;
+        if (p[i + 2] > 8) p[i + 2] -= 70;
+      }
+      this.snow.position.set(cam.x, cam.y - 6, cam.z);
+      this.snow.geometry.attributes.position.needsUpdate = true;
+    }
 
     // 陰影相機跟著玩家，並對齊貼圖像素，避免陰影閃爍
     const snap = 60 / this.sun.shadow.mapSize.x;

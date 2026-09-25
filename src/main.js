@@ -6,6 +6,7 @@ import { Environment } from './environment.js';
 import { Player } from './player.js';
 import { Level } from './level.js';
 import { Sfx } from './audio.js';
+import { THEMES, THEME_ORDER } from './themes.js';
 import {
   LANES,
   GROUND,
@@ -58,6 +59,7 @@ const stage = new Stage($('game'));
 const models = new Models();
 const sfx = new Sfx();
 sfx.setMuted(store.get('muted', false));
+sfx.musicEnabled = store.get('music', true);
 const env = new Environment(stage.scene);
 const player = new Player();
 stage.scene.add(player.root);
@@ -87,6 +89,12 @@ const S = {
   camBlend: 0,
   camY: 3.4,
   lastBump: -10,
+  scene: THEME_ORDER.includes(store.get('scene', 'city')) || store.get('scene', 'city') === 'tour' ? store.get('scene', 'city') : 'city',
+  theme: null,
+  onTrain: false,
+  milestone: 0,
+  clackT: 0,
+  stepCount: 0,
 };
 
 function resetRun() {
@@ -109,12 +117,34 @@ function resetRun() {
     shake: 0,
     camY: 3.4,
     lastBump: -10,
+    onTrain: false,
+    milestone: 0,
+    clackT: 0,
   });
+  env.setMode(S.scene);
   env.reset();
+  syncTheme(true);
   level.reset(0);
   level.difficulty = 0;
   player.pose.crash = 0;
 }
+
+// ---------- 場景 ----------
+function syncTheme(instant = false) {
+  const id = env.themeAt(S.z - 4);
+  if (id === S.theme && !instant) return;
+  const changed = S.theme && id !== S.theme;
+  S.theme = id;
+  stage.setTheme(THEMES[id], instant);
+  sfx.setTheme(id, instant);
+  $('sceneName').textContent = THEMES[id].name;
+  if (changed && !instant && S.mode === 'playing') {
+    flash(`進入「${THEMES[id].name}」`);
+    sfx.themeChange();
+  }
+}
+
+const surface = () => (S.onTrain ? 'metal' : THEMES[S.theme].surface);
 
 // ---------- 動作 ----------
 function moveLane(dir) {
@@ -146,7 +176,7 @@ function slide() {
   if (S.mode !== 'playing') return;
   if (S.grounded) {
     S.slideT = SLIDE_TIME;
-    sfx.slide();
+    sfx.slide(surface());
   } else {
     S.vy = Math.min(S.vy, -32);
     S.slideBuffer = 0.4;
@@ -160,6 +190,8 @@ function crash() {
   S.shake = 0.7;
   sfx.crash();
   sfx.stopMusic();
+  sfx.setSpeed(0, false);
+  sfx.setRumble(0);
   if (navigator.vibrate) navigator.vibrate(180);
 }
 
@@ -201,6 +233,7 @@ function stepPlaying(dt) {
   const zMin = S.z - PLAYER_HALF_D;
   const zMax = prevZ + PLAYER_HALF_D;
   let support = GROUND;
+  let onTrain = false;
 
   for (const o of level.obstacles) {
     const oz0 = o.zFront - o.length;
@@ -214,6 +247,7 @@ function stepPlaying(dt) {
       const top = level.heightAt(o, S.z);
       const tol = o.kind === 'ramp' ? 1.1 : 0.55;
       if (prevY >= top - tol) {
+        if (top >= support) onTrain = top > GROUND + 0.3;
         support = Math.max(support, top);
       } else if (!wasOver) {
         sideBump(prevX);
@@ -231,15 +265,16 @@ function stepPlaying(dt) {
     }
   }
 
+  S.onTrain = onTrain;
   if (S.y <= support && S.vy <= 0) {
-    if (!S.grounded && S.vy < -12) sfx.land();
+    if (!S.grounded && S.vy < -12) sfx.land(surface());
     S.y = support;
     S.vy = 0;
     S.grounded = true;
     if (S.slideBuffer > 0) {
       S.slideBuffer = 0;
       S.slideT = SLIDE_TIME;
-      sfx.slide();
+      sfx.slide(surface());
     }
     if (S.jumpBuffer > 0) {
       S.jumpBuffer = 0;
@@ -260,6 +295,46 @@ function stepPlaying(dt) {
     sfx.coin();
     stage.burst(c.mesh.position, 9);
     bumpCoinHud();
+  }
+
+  // 擦身而過：旁邊車道的列車車頭，或自己車道剛越過的柵欄
+  for (const o of level.obstacles) {
+    if (o.whooshed || o.decorative) continue;
+    if (o.zFront > prevZ || o.zFront < S.z) continue;
+    const dx = Math.abs(o.x - S.x);
+    if ((o.kind === 'train' && dx > 1 && dx < 3.5 && S.y < 3) || ((o.kind === 'low' || o.kind === 'high') && dx < 1)) {
+      o.whooshed = true;
+      sfx.whoosh();
+    }
+  }
+
+  // 每 500 公尺
+  const ms = Math.floor(S.distance / 500);
+  if (ms > S.milestone) {
+    S.milestone = ms;
+    sfx.milestone();
+    flash(`${ms * 500} 公尺！`);
+  }
+}
+
+// 迎面列車的轟隆聲與車輪聲
+function updateTrainAudio(dt) {
+  let p = 0;
+  if (S.mode === 'playing') {
+    for (const o of level.obstacles) {
+      if (!o.moving || !o.active) continue;
+      const d = Math.max(0, S.z - o.zFront, o.zFront - o.length - S.z);
+      p = Math.max(p, 1 - d / 90);
+    }
+  }
+  p = Math.max(0, p);
+  sfx.setRumble(p * p);
+  if (p > 0.3) {
+    S.clackT -= dt;
+    if (S.clackT <= 0) {
+      sfx.clack();
+      S.clackT = 0.5 - p * 0.25;
+    }
   }
 }
 
@@ -315,6 +390,7 @@ const ui = {
   best: $('bestStart'),
   bank: $('bankStart'),
   muteBtn: $('muteBtn'),
+  musicBtn: $('musicBtn'),
 };
 
 const score = () => Math.floor(S.distance) + S.coins * 10;
@@ -345,6 +421,7 @@ function startGame() {
   sfx.ensure();
   if (S.mode === 'over') resetRun();
   S.mode = 'playing';
+  sfx.startChime();
   ui.start.hidden = true;
   ui.over.hidden = true;
   ui.pause.hidden = true;
@@ -374,6 +451,8 @@ function gameOver() {
   $('overDist').textContent = `${Math.floor(S.distance)} m`;
   $('overBest').textContent = Math.max(sc, best).toLocaleString();
   $('newBest').hidden = !isBest;
+  if (isBest) sfx.record();
+  else sfx.gameOver();
   ui.hud.hidden = true;
   ui.over.hidden = false;
 }
@@ -383,6 +462,8 @@ function togglePause() {
     S.mode = 'paused';
     ui.pause.hidden = false;
     sfx.stopMusic();
+    sfx.setSpeed(0, false);
+    sfx.setRumble(0);
   } else if (S.mode === 'paused') {
     S.mode = 'playing';
     ui.pause.hidden = true;
@@ -398,6 +479,33 @@ function toggleMute() {
 }
 ui.muteBtn.setAttribute('aria-pressed', String(sfx.muted));
 
+function toggleMusic() {
+  const on = !sfx.musicEnabled;
+  sfx.setMusicEnabled(on);
+  store.set('music', on);
+  ui.musicBtn.setAttribute('aria-pressed', String(!on));
+}
+ui.musicBtn.setAttribute('aria-pressed', String(!sfx.musicEnabled));
+
+// 場景選擇
+const sceneButtons = [...document.querySelectorAll('[data-scene]')];
+function selectScene(id, preview = true) {
+  S.scene = id;
+  store.set('scene', id);
+  for (const b of sceneButtons) b.setAttribute('aria-checked', String(b.dataset.scene === id));
+  if (preview && S.mode === 'menu') resetRun();
+}
+for (const b of sceneButtons) {
+  const t = THEMES[b.dataset.scene];
+  if (t) b.style.setProperty('--sw', `linear-gradient(135deg, ${t.swatch[0]}, ${t.swatch[1]})`);
+  b.addEventListener('click', () => {
+    sfx.ensure();
+    sfx.click();
+    selectScene(b.dataset.scene);
+  });
+}
+selectScene(S.scene, false);
+
 $('startBtn').addEventListener('click', startGame);
 $('againBtn').addEventListener('click', () => {
   resetRun();
@@ -408,6 +516,16 @@ $('menuBtn').addEventListener('click', showMenu);
 $('resumeBtn').addEventListener('click', togglePause);
 $('pauseBtn').addEventListener('click', togglePause);
 ui.muteBtn.addEventListener('click', toggleMute);
+ui.musicBtn.addEventListener('click', () => {
+  sfx.ensure();
+  toggleMusic();
+});
+for (const id of ['startBtn', 'againBtn', 'menuBtn', 'resumeBtn', 'pauseBtn']) {
+  $(id).addEventListener('pointerdown', () => {
+    sfx.ensure();
+    sfx.click();
+  });
+}
 
 // ---------- 輸入：鍵盤 ----------
 addEventListener('keydown', (e) => {
@@ -494,7 +612,9 @@ function update(dt) {
   }
 
   level.update(dt, S.z, S.speed, S.time);
-  env.update(S.z);
+  env.update(S.z, dt);
+  syncTheme();
+  updateTrainAudio(dt);
 }
 
 function frame() {
@@ -520,8 +640,17 @@ function present(dt) {
     lean: -(LANES[S.lane] - S.x) * 0.1,
   });
 
+  // 腳步聲：跟著跑步動畫的節奏
+  const stepIdx = Math.floor(player.phase / Math.PI);
+  if (stepIdx !== S.stepCount) {
+    S.stepCount = stepIdx;
+    if (S.mode === 'playing' && S.grounded && S.slideT <= 0) sfx.step(surface());
+  }
+
   updateCamera(dt);
   const sf = S.mode === 'playing' ? (S.speed - START_SPEED) / (MAX_SPEED - START_SPEED) : 0;
+  sfx.setSpeed(sf, S.mode === 'playing');
+  stage.runSpeed = S.mode === 'playing' ? S.speed : 0;
   stage.update(dt, { z: S.z }, sf, S.time);
   stage.render();
 

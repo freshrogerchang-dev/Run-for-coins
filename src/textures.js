@@ -563,3 +563,173 @@ export function posterTexture(i) {
   ctx.strokeRect(4, 4, 248, 376);
   return toTexture(c, { repeat: false });
 }
+
+// ---------- 沙灘 ----------
+export function sandTexture() {
+  const [c, ctx] = makeCanvas(256, 256);
+  ctx.fillStyle = '#e8d3a6';
+  ctx.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 6000; i++) {
+    const v = Math.random();
+    ctx.fillStyle = v < 0.5 ? 'rgba(160,125,80,0.25)' : 'rgba(255,248,225,0.35)';
+    ctx.fillRect(Math.random() * 256, Math.random() * 256, 1.5, 1.5);
+  }
+  // 風吹的沙紋
+  ctx.strokeStyle = 'rgba(170,135,90,0.18)';
+  ctx.lineWidth = 2;
+  for (let y = 0; y < 256; y += 14) {
+    ctx.beginPath();
+    for (let x = 0; x <= 256; x += 8) ctx.lineTo(x, y + Math.sin(x * 0.05 + y) * 3);
+    ctx.stroke();
+  }
+  return toTexture(c);
+}
+
+// ---------- 雪地 ----------
+export function snowTexture() {
+  const [c, ctx] = makeCanvas(256, 256);
+  ctx.fillStyle = '#f3f7fb';
+  ctx.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 40; i++) {
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rand(15, 45));
+    g.addColorStop(0, 'rgba(170,195,225,0.22)');
+    g.addColorStop(1, 'rgba(170,195,225,0)');
+    ctx.save();
+    ctx.translate(Math.random() * 256, Math.random() * 256);
+    ctx.fillStyle = g;
+    ctx.fillRect(-50, -50, 100, 100);
+    ctx.restore();
+  }
+  for (let i = 0; i < 1500; i++) {
+    ctx.fillStyle = `rgba(255,255,255,${rand(0.4, 1)})`;
+    ctx.fillRect(Math.random() * 256, Math.random() * 256, 1.5, 1.5);
+  }
+  return toTexture(c);
+}
+
+// ---------- 海浪法線貼圖 ----------
+export function waterNormalTexture() {
+  const S = 256;
+  const [c, ctx] = makeCanvas(S, S);
+  const img = ctx.createImageData(S, S);
+  const h = (x, y) => {
+    const u = (x / S) * Math.PI * 2;
+    const v = (y / S) * Math.PI * 2;
+    return (
+      Math.sin(u * 3 + Math.sin(v * 2) * 1.5) * 0.5 +
+      Math.sin(v * 5 + u * 2) * 0.3 +
+      Math.sin(u * 9 - v * 7) * 0.12 +
+      Math.sin(u * 17 + v * 13) * 0.06
+    );
+  };
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const dx = h(x + 1, y) - h(x - 1, y);
+      const dy = h(x, y + 1) - h(x, y - 1);
+      const n = [-dx * 3, -dy * 3, 1];
+      const l = Math.hypot(...n);
+      const i = (y * S + x) * 4;
+      img.data[i] = ((n[0] / l) * 0.5 + 0.5) * 255;
+      img.data[i + 1] = ((n[1] / l) * 0.5 + 0.5) * 255;
+      img.data[i + 2] = ((n[2] / l) * 0.5 + 0.5) * 255;
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return toTexture(c, { srgb: false });
+}
+
+// ---------- 隧道牆面 ----------
+export function tunnelTexture() {
+  const W = 512;
+  const H = 512;
+  const [c, ctx] = makeCanvas(W, H);
+  ctx.fillStyle = '#5d5a55';
+  ctx.fillRect(0, 0, W, H);
+  // 混凝土管片
+  for (let y = 0; y < H; y += 128) {
+    for (let x = 0; x < W; x += 256) {
+      const v = 80 + Math.random() * 20;
+      ctx.fillStyle = `rgb(${v},${v - 3},${v - 8})`;
+      ctx.fillRect(x + 3, y + 3, 250, 122);
+    }
+    ctx.fillStyle = 'rgba(20,18,15,0.7)';
+    ctx.fillRect(0, y, W, 3);
+  }
+  for (let x = 0; x < W; x += 256) {
+    ctx.fillStyle = 'rgba(20,18,15,0.7)';
+    ctx.fillRect(x, 0, 3, H);
+  }
+  // 螺栓
+  ctx.fillStyle = '#2d2b28';
+  for (let y = 16; y < H; y += 64) for (let x = 20; x < W; x += 58) ctx.fillRect(x, y, 5, 5);
+  noise(ctx, W, H, 6000, 0.15, false);
+  // 水漬
+  for (let i = 0; i < 18; i++) {
+    const x = Math.random() * W;
+    const len = rand(60, 260);
+    const g = ctx.createLinearGradient(0, 0, 0, len);
+    g.addColorStop(0, 'rgba(30,40,35,0.45)');
+    g.addColorStop(1, 'rgba(30,40,35,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x, Math.random() * H * 0.5, rand(4, 14), len);
+  }
+  return toTexture(c);
+}
+
+// ---------- 霓虹招牌 ----------
+export function neonSignTexture(text, color, vertical = false) {
+  const W = vertical ? 160 : 512;
+  const H = vertical ? 512 : 160;
+  const [c, ctx] = makeCanvas(W, H);
+  ctx.fillStyle = '#120c1c';
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 6;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 18;
+  roundRect(ctx, 10, 10, W - 20, H - 20, 18);
+  ctx.stroke();
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const font = /[A-Z0-9]/.test(text[0]) ? '"Bungee", "Arial Black", sans-serif' : '"Noto Sans TC", "PingFang TC", sans-serif';
+  if (vertical) {
+    const chars = [...text];
+    const size = Math.min(110, (H - 60) / chars.length);
+    ctx.font = `900 ${size}px ${font}`;
+    chars.forEach((ch, i) => {
+      const y = 30 + size / 2 + i * size + (H - 60 - size * chars.length) / 2;
+      ctx.shadowBlur = 24;
+      ctx.fillStyle = color;
+      ctx.fillText(ch, W / 2, y);
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fillText(ch, W / 2, y);
+    });
+  } else {
+    ctx.font = `900 ${Math.min(96, (W - 60) / Math.max(2, text.length * 0.75))}px ${font}`;
+    ctx.shadowBlur = 28;
+    ctx.fillStyle = color;
+    ctx.fillText(text, W / 2, H / 2 + 4);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillText(text, W / 2, H / 2 + 4);
+  }
+  return toTexture(c, { repeat: false });
+}
+
+// ---------- 木板牆（海邊小屋、雪地小木屋） ----------
+export function plankTexture(color) {
+  const [c, ctx] = makeCanvas(128, 128);
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, 128, 128);
+  for (let y = 0; y < 128; y += 16) {
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.fillRect(0, y, 128, 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillRect(0, y + 2, 128, 2);
+  }
+  noise(ctx, 128, 128, 500, 0.12, false);
+  return toTexture(c);
+}
