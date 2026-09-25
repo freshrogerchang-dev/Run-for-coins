@@ -388,6 +388,67 @@ export class Sfx {
     this.burst(0.6, { vol: 0.12, freq: 600, q: 0.6, sweep: 4000 });
   }
 
+  // ---------- 天氣 ----------
+  setRain(amount) {
+    if (!this.ctx) return;
+    if (!this.rainGain) {
+      const src = this.loopNoise();
+      const hp = this.ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 1200;
+      const lp = this.ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 7000;
+      this.rainGain = this.ctx.createGain();
+      this.rainGain.gain.value = 0;
+      src.connect(hp).connect(lp).connect(this.rainGain).connect(this.master);
+    }
+    this.rainGain.gain.setTargetAtTime(amount * 0.16, this.ctx.currentTime, 0.5);
+  }
+
+  thunder(delay = 0.5) {
+    this.burst(0.25, { vol: 0.5, freq: 1800, q: 0.4, type: 'lowpass', delay });
+    this.burst(3.2, { vol: 0.7, freq: 160, q: 0.5, type: 'lowpass', delay: delay + 0.05, attack: 0.08 });
+    this.tone(38, 2.6, { vol: 0.35, slide: -10, delay: delay + 0.1, attack: 0.1 });
+  }
+
+  // ---------- 追趕者 ----------
+  whistle() {
+    for (let i = 0; i < 2; i++) {
+      this.tone(2900, 0.22, { type: 'sine', vol: 0.09, delay: i * 0.28, attack: 0.01 });
+      this.tone(3050, 0.22, { type: 'sine', vol: 0.06, delay: i * 0.28 });
+    }
+  }
+
+  bark() {
+    for (let i = 0; i < 2; i++) {
+      this.tone(420, 0.1, { type: 'sawtooth', vol: 0.09, slide: -180, delay: i * 0.18, cut: 1800 });
+      this.burst(0.08, { vol: 0.12, freq: 900, q: 1.5, delay: i * 0.18 });
+    }
+  }
+
+  // ---------- 滑板 ----------
+  boardOn() {
+    this.tone(220, 0.5, { type: 'sawtooth', vol: 0.06, slide: 440, cut: 2200 });
+    this.burst(0.5, { vol: 0.15, freq: 500, q: 1, sweep: 3000 });
+    this.sparkle(0.2);
+  }
+
+  boardBreak() {
+    this.burst(0.4, { vol: 0.35, freq: 1200, q: 0.7 });
+    this.tone(300, 0.4, { type: 'square', vol: 0.08, slide: -240, cut: 2000 });
+  }
+
+  // ---------- 任務與成就 ----------
+  mission() {
+    [76, 79, 84].forEach((m, i) => this.tone(mtof(m), 0.2, { type: 'triangle', vol: 0.12, delay: i * 0.08 }));
+  }
+
+  achievement() {
+    [72, 76, 79, 84, 88].forEach((m, i) => this.tone(mtof(m), 0.25, { type: 'square', vol: 0.06, delay: i * 0.07, cut: 4000 }));
+    this.sparkle(0.35);
+  }
+
   // ---------- 介面與事件音效 ----------
   click() {
     this.tone(1400, 0.04, { type: 'square', vol: 0.05 });

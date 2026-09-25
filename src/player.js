@@ -29,7 +29,7 @@ export class Player {
     this.root = new THREE.Group();
     this.phase = 0;
     this.pose = { jump: 0, slide: 0, crash: 0, idle: 1 };
-    this.fx = { jetpack: false, spring: false, shield: false, magnet: false };
+    this.fx = { jetpack: false, spring: false, shield: false, magnet: false, board: false };
     this.build();
     this.buildPowerVisuals();
   }
@@ -88,11 +88,14 @@ export class Player {
     // 頭
     this.head = pivot(this.torso, 0, 0.62);
     part(new THREE.CylinderGeometry(0.07, 0.08, 0.1, 10), mat.skin, this.head, { y: 0.02 });
-    part(new THREE.SphereGeometry(0.19, 24, 18), mat.skin, this.head, { y: 0.2 });
-    part(hemi(0.195), mat.hair, this.head, { y: 0.21, rx: 0.35 });
-    for (const ex of [-0.07, 0.07]) part(new THREE.SphereGeometry(0.025, 10, 8), mat.eye, this.head, { x: ex, y: 0.2, z: -0.175 });
-    part(new THREE.SphereGeometry(0.03, 10, 8), mat.skin, this.head, { y: 0.15, z: -0.19 });
+    this.face = pivot(this.head, 0, 0);
+    part(new THREE.SphereGeometry(0.19, 24, 18), mat.skin, this.face, { y: 0.2 });
+    part(hemi(0.195), mat.hair, this.face, { y: 0.21, rx: 0.35 });
+    for (const ex of [-0.07, 0.07]) part(new THREE.SphereGeometry(0.025, 10, 8), mat.eye, this.face, { x: ex, y: 0.2, z: -0.175 });
+    part(new THREE.SphereGeometry(0.03, 10, 8), mat.skin, this.face, { y: 0.15, z: -0.19 });
+    this.hatRoot = pivot(this.head, 0, 0);
     this.buildHats();
+    this.buildCharacters();
 
     // 手臂
     this.arms = [];
@@ -123,7 +126,7 @@ export class Player {
   // 各種帽子與配件，依服裝切換顯示
   buildHats() {
     const m = this.mats;
-    const h = this.head;
+    const h = this.hatRoot;
     const g = () => {
       const grp = new THREE.Group();
       h.add(grp);
@@ -203,6 +206,64 @@ export class Player {
     extras.headlamp = g();
     extras.scarf = this.scarf;
     this.extras = extras;
+  }
+
+  // 角色：頭部造型、膚色、體型
+  buildCharacters() {
+    const m = this.mats;
+    const metal = new THREE.MeshStandardMaterial({ color: '#9aa7b8', roughness: 0.3, metalness: 0.85 });
+    const visor = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.6, 3, 3.6) });
+    const red = new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 0.5, 0.4) });
+    const fur = new THREE.MeshStandardMaterial({ color: '#e0762b', roughness: 0.85 });
+    const white = new THREE.MeshStandardMaterial({ color: '#fff6ea', roughness: 0.85 });
+    this.charMats = { metal, fur };
+
+    // 小美的馬尾
+    this.ponytail = pivot(this.head, 0, 0);
+    part(new THREE.SphereGeometry(0.08, 12, 10), m.hair, this.ponytail, { y: 0.33, z: 0.15 });
+    part(new THREE.CapsuleGeometry(0.065, 0.22, 4, 10), m.hair, this.ponytail, { y: 0.2, z: 0.25, rx: 0.5 });
+    part(new THREE.TorusGeometry(0.06, 0.018, 6, 12), m.trim, this.ponytail, { y: 0.31, z: 0.2, rx: 0.9 });
+
+    // 機器人頭
+    this.robotHead = pivot(this.head, 0, 0);
+    part(new RoundedBoxGeometry(0.4, 0.36, 0.36, 3, 0.07), metal, this.robotHead, { y: 0.21 });
+    part(new RoundedBoxGeometry(0.32, 0.1, 0.04, 2, 0.02), visor, this.robotHead, { y: 0.23, z: -0.18 });
+    part(new THREE.CylinderGeometry(0.015, 0.015, 0.2, 6), metal, this.robotHead, { x: 0.1, y: 0.47 });
+    part(new THREE.SphereGeometry(0.035, 10, 8), red, this.robotHead, { x: 0.1, y: 0.58 });
+    for (const x of [-0.21, 0.21]) part(new THREE.CylinderGeometry(0.06, 0.06, 0.04, 12), metal, this.robotHead, { x, y: 0.2, rz: Math.PI / 2 });
+    part(new THREE.BoxGeometry(0.16, 0.02, 0.02), m.dark, this.robotHead, { y: 0.1, z: -0.18 });
+
+    // 狐狸頭
+    this.foxHead = pivot(this.head, 0, 0);
+    part(new THREE.SphereGeometry(0.2, 20, 16), fur, this.foxHead, { y: 0.2 });
+    part(new THREE.ConeGeometry(0.1, 0.22, 12), white, this.foxHead, { y: 0.14, z: -0.24, rx: -Math.PI / 2 });
+    part(new THREE.SphereGeometry(0.035, 8, 6), m.eye, this.foxHead, { y: 0.14, z: -0.35 });
+    for (const s of [-1, 1]) {
+      part(new THREE.SphereGeometry(0.028, 8, 6), m.eye, this.foxHead, { x: s * 0.08, y: 0.24, z: -0.17 });
+      part(new THREE.ConeGeometry(0.08, 0.2, 4), fur, this.foxHead, { x: s * 0.12, y: 0.42, z: 0.02, rz: -s * 0.25 });
+      part(new THREE.ConeGeometry(0.045, 0.12, 4), white, this.foxHead, { x: s * 0.12, y: 0.4, z: -0.02, rz: -s * 0.25 });
+      part(new THREE.SphereGeometry(0.08, 10, 8), white, this.foxHead, { x: s * 0.1, y: 0.1, z: -0.12 });
+    }
+    // 狐狸尾巴
+    this.foxTail = pivot(this.hips, 0, 0.05, 0.18);
+    part(new THREE.CapsuleGeometry(0.11, 0.38, 6, 12), fur, this.foxTail, { y: 0.14, z: 0.2, rx: 1.0 });
+    part(new THREE.SphereGeometry(0.1, 12, 10), white, this.foxTail, { y: 0.34, z: 0.36 });
+  }
+
+  applyCharacter(c) {
+    const id = c.id;
+    this.character = id;
+    this.face.visible = id === 'kid' || id === 'girl';
+    this.ponytail.visible = id === 'girl';
+    this.robotHead.visible = id === 'robot';
+    this.foxHead.visible = id === 'fox';
+    this.foxTail.visible = id === 'fox';
+    const skin = { kid: '#f2c29b', girl: '#f7d4bb', robot: '#9aa7b8', fox: '#e0762b' }[id];
+    this.mats.skin.color.set(skin);
+    this.mats.skin.metalness = id === 'robot' ? 0.85 : 0;
+    this.mats.skin.roughness = id === 'robot' ? 0.3 : 0.6;
+    this.root.scale.setScalar(id === 'girl' ? 0.95 : id === 'robot' ? 1.04 : 1);
+    this.hatRoot.position.y = id === 'robot' ? 0.07 : id === 'fox' ? 0.02 : 0;
   }
 
   applyOutfit(o) {
@@ -302,6 +363,23 @@ export class Player {
     this.magnet.position.set(0, 2.2, 0);
     this.magnet.visible = false;
     this.root.add(this.magnet);
+
+    // 滑板
+    this.board = new THREE.Group();
+    const deck = new THREE.MeshStandardMaterial({ color: '#ff3d7f', roughness: 0.35, metalness: 0.3 });
+    const stripe = new THREE.MeshStandardMaterial({ color: '#ffd23f', roughness: 0.4 });
+    const glowMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.5, 2.6, 4), transparent: true, opacity: 0.9 });
+    part(new RoundedBoxGeometry(0.62, 0.07, 1.5, 3, 0.03), deck, this.board, { y: 0.14 });
+    part(new THREE.BoxGeometry(0.64, 0.075, 0.12), stripe, this.board, { y: 0.14, z: -0.4 });
+    part(new THREE.BoxGeometry(0.64, 0.075, 0.12), stripe, this.board, { y: 0.14, z: 0.4 });
+    const glow = part(new THREE.BoxGeometry(0.5, 0.02, 1.3), glowMat, this.board, { y: 0.09 });
+    glow.castShadow = false;
+    for (const z of [-0.5, 0.5]) {
+      const pad = part(new THREE.CylinderGeometry(0.14, 0.1, 0.06, 16), glowMat, this.board, { y: 0.08, z });
+      pad.castShadow = false;
+    }
+    this.board.visible = false;
+    this.root.add(this.board);
   }
 
   setPower(fx) {
@@ -311,6 +389,7 @@ export class Player {
     for (const s of this.springs) s.visible = this.fx.spring;
     this.shield.visible = this.fx.shield;
     this.magnet.visible = this.fx.magnet;
+    this.board.visible = this.fx.board;
   }
 
   // state: { speed, grounded, vy, sliding, crashed, lean, idle, flying }
@@ -323,10 +402,11 @@ export class Player {
     p.crash = lerp(p.crash, s.crashed ? 1 : 0, 1 - Math.exp(-dt * 8));
     p.idle = lerp(p.idle, s.idle ? 1 : 0, 1 - Math.exp(-dt * 6));
     p.fly = lerp(p.fly || 0, s.flying ? 1 : 0, k);
+    p.board = lerp(p.board || 0, this.fx.board && !s.sliding && !s.crashed && !s.flying ? 1 : 0, k);
 
     if (!s.crashed) this.phase += dt * (s.idle ? 2.2 : 4.5 + s.speed * 0.22);
     const ph = this.phase;
-    const run = (1 - p.jump) * (1 - p.slide) * (1 - p.idle) * (1 - p.crash) * (1 - p.fly);
+    const run = (1 - p.jump) * (1 - p.slide) * (1 - p.idle) * (1 - p.crash) * (1 - p.fly) * (1 - p.board);
 
     const swing = Math.sin(ph);
     this.hips.position.y = 0.95 + run * Math.abs(Math.cos(ph)) * 0.07 + p.idle * Math.sin(ph) * 0.01;
@@ -347,17 +427,21 @@ export class Player {
       leg.hip.rotation.x = runHip * run + jumpHip * p.jump + slideHip * p.slide + 0.6 * p.crash + flyHip * p.fly;
       leg.knee.rotation.x = runKnee * run + jumpKnee * p.jump + slideKnee * p.slide - 0.4 * p.crash - 0.05 * p.idle - 0.5 * p.fly;
       leg.ankle.rotation.x = -0.3 * run * Math.max(0, -s2) + 0.3 * p.slide + 0.4 * p.fly;
-      leg.hip.rotation.z = -leg.side * 0.04 * p.idle;
+      leg.hip.rotation.z = -leg.side * 0.04 * p.idle + -leg.side * 0.28 * p.board;
+      leg.hip.rotation.x += (leg.side < 0 ? 0.35 : -0.25) * p.board * (1 - p.jump);
+      leg.knee.rotation.x += -0.55 * p.board * (1 - p.jump);
     }
     for (const arm of this.arms) {
       const s2 = arm.side < 0 ? -swing : swing;
       arm.shoulder.rotation.x = s2 * 0.9 * run - 2.6 * p.jump * (arm.side < 0 ? 1 : 0.8) + -0.9 * p.slide - 1.8 * p.crash + 0.5 * p.fly;
       arm.shoulder.rotation.z = arm.side * (0.12 + 0.35 * p.jump + 0.9 * p.slide + 0.6 * p.crash + 0.05 * p.idle + 0.6 * p.fly);
-      arm.elbow.rotation.x = 1.3 * run + 0.4 * p.jump + 0.2 * p.slide + 0.15 * p.idle + 0.2 * p.fly;
+      arm.elbow.rotation.x = 1.3 * run + 0.4 * p.jump + 0.2 * p.slide + 0.15 * p.idle + 0.2 * p.fly + 0.4 * p.board;
+      arm.shoulder.rotation.z += arm.side * 0.9 * p.board;
     }
 
     this.body.rotation.x = 1.15 * p.slide + 1.45 * p.crash - 0.25 * p.fly;
-    this.body.position.y = 0.12 * p.slide + 0.18 * p.crash + (this.fx.spring ? 0.2 * (1 - p.slide) : 0);
+    this.body.position.y = 0.12 * p.slide + 0.18 * p.crash + (this.fx.spring ? 0.2 * (1 - p.slide) : 0) + 0.2 * p.board;
+    this.body.rotation.y = 0.45 * p.board;
     this.body.position.z = 0.25 * p.slide + 0.7 * p.crash;
     this.body.rotation.z = s.lean ?? 0;
     this.hips.rotation.x = -0.25 * p.jump * Math.max(0, Math.min(1, s.vy / 10));
@@ -366,6 +450,11 @@ export class Player {
     const t = performance.now() / 1000;
     if (this.jet.visible) for (const f of this.flames) f.scale.set(1, 0.8 + Math.random() * 0.6 + p.fly * 0.6, 1);
     if (this.shield.visible) this.shieldMat.uniforms.uTime.value = t;
+    if (this.board.visible) {
+      this.board.position.y = 0.06 + Math.sin(t * 6) * 0.03;
+      this.board.rotation.z = (s.lean ?? 0) * 2;
+    }
+    if (this.foxTail.visible) this.foxTail.rotation.y = Math.sin(this.phase) * 0.35;
     if (this.magnet.visible) {
       this.magnet.rotation.y = t * 3;
       this.magnet.position.y = 2.2 + Math.sin(t * 4) * 0.08;

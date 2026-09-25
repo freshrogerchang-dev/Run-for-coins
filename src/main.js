@@ -8,6 +8,19 @@ import { Level } from './level.js';
 import { Sfx } from './audio.js';
 import { THEMES, THEME_ORDER } from './themes.js';
 import { PowerupModels } from './powerups.js';
+import { Chaser } from './chaser.js';
+import {
+  Meta,
+  CHARACTERS,
+  ownedCharacters,
+  boards,
+  setBoards,
+  BOARD_PRICE,
+  BOARD_TIME,
+  ACHIEVEMENTS,
+  missionText,
+  DAILY_BONUS,
+} from './meta.js';
 import {
   store,
   POWERUPS,
@@ -68,6 +81,11 @@ const level = new Level(stage.scene, models, sfx, new PowerupModels());
 const outfitOf = (id) => OUTFITS.find((o) => o.id === id) || OUTFITS[0];
 let outfitId = outfitUnlocked(store.get('outfit', 'street')) ? store.get('outfit', 'street') : 'street';
 player.applyOutfit(outfitOf(outfitId));
+let charId = ownedCharacters().includes(store.get('char', 'kid')) ? store.get('char', 'kid') : 'kid';
+player.applyCharacter(CHARACTERS.find((c) => c.id === charId));
+const meta = new Meta();
+const chaser = new Chaser(stage.scene);
+const NO_RAIN = ['tunnel', 'space', 'snow', 'volcano'];
 
 const JUMP_V = Math.sqrt(2 * GRAVITY * JUMP_HEIGHT);
 const JUMP_V_SPRING = Math.sqrt(2 * GRAVITY * 4.6);
@@ -147,7 +165,17 @@ function resetRun() {
     stageDone: false,
     vaulting: 0,
     crashCause: null,
+    board: 0,
+    storming: 0,
+    weatherT: 14,
+    lightningT: 5,
+    distAcc: 0,
+    roofAcc: 0,
+    stormAcc: 0,
   });
+  chaser.reset();
+  stage.setStorm(false);
+  sfx.setRain(0);
   S.stage = S.scene === 'tour' ? null : STAGES.find((st) => st.scene === S.scene) || null;
   player.setPower({ jetpack: false, spring: false, shield: false, magnet: false });
   player.root.visible = true;
@@ -175,7 +203,31 @@ function syncTheme(instant = false) {
   }
 }
 
-const surface = () => (S.onTrain ? 'metal' : THEMES[S.theme].surface);
+const stormOn = () => S.storming > 0 && !NO_RAIN.includes(S.theme);
+const surface = () => (S.onTrain ? 'metal' : stormOn() ? 'wet' : THEMES[S.theme].surface);
+
+// ---------- 滑板 ----------
+function useBoard() {
+  if (S.mode !== 'playing' || S.board > 0 || S.power.jetpack > 0) return;
+  const n = boards();
+  if (n <= 0) {
+    sfx.denied();
+    flash('沒有滑板了，可以到商店買');
+    return;
+  }
+  setBoards(n - 1);
+  S.board = BOARD_TIME;
+  sfx.boardOn();
+  flash('滑板！可以擋一次撞擊');
+  meta.track('hoverboards');
+  syncPowerVisuals();
+  updateBoardBtn();
+}
+
+function updateBoardBtn() {
+  $('boardCount').textContent = boards();
+  $('boardBtn').classList.toggle('empty', boards() <= 0);
+}
 
 // ---------- 動作 ----------
 function moveLane(dir) {
@@ -189,6 +241,7 @@ function moveLane(dir) {
   S.prevLane = S.lane;
   S.lane = next;
   sfx.lane();
+  meta.track('lanes');
 }
 
 function jump() {
@@ -199,6 +252,7 @@ function jump() {
     S.grounded = false;
     S.slideT = 0;
     sfx.jump();
+    meta.track('jumps');
   } else {
     S.jumpBuffer = 0.16;
   }
@@ -209,6 +263,7 @@ function slide() {
   if (S.grounded) {
     S.slideT = SLIDE_TIME;
     sfx.slide(surface());
+    meta.track('slides');
   } else {
     S.vy = Math.min(S.vy, -32);
     S.slideBuffer = 0.4;
@@ -220,6 +275,11 @@ function crash() {
   S.mode = 'crashing';
   S.crashT = 0;
   S.shake = 0.7;
+  chaser.catchPlayer();
+  sfx.bark();
+  stage.setStorm(false);
+  sfx.setRain(0);
+  meta.flush();
   sfx.crash();
   sfx.stopMusic();
   sfx.setSpeed(0, false);
@@ -274,6 +334,7 @@ function openMystery() {
 
 function syncPowerVisuals() {
   player.setPower({
+    board: S.board > 0 && S.power.jetpack <= 0,
     jetpack: S.power.jetpack > 0,
     spring: S.power.spring > 0,
     shield: S.power.shield > 0,
@@ -283,6 +344,15 @@ function syncPowerVisuals() {
 
 function tickPowers(dt) {
   S.invuln = Math.max(0, S.invuln - dt);
+  if (S.board > 0) {
+    const b = S.board;
+    S.board = Math.max(0, b - dt);
+    if (S.board < 2 && Math.floor(b * 2) !== Math.floor(S.board * 2)) sfx.powerWarn();
+    if (S.board === 0) {
+      sfx.powerEnd();
+      syncPowerVisuals();
+    }
+  }
   for (const k of POWER_KEYS) {
     const before = S.power[k];
     if (before <= 0) continue;
@@ -306,6 +376,7 @@ function smashOrVault(o) {
   if (o.kind === 'low' || o.kind === 'high') {
     level.knock(o, Math.sign(o.x - S.x) || (Math.random() < 0.5 ? -1 : 1));
     sfx.smash();
+    if (S.power.dash > 0) meta.track('smashes');
     stage.burst(new THREE.Vector3(o.x, 1, o.zFront), 14);
     S.shake = Math.max(S.shake, 0.18);
   } else if (!S.vaulting) {
@@ -327,6 +398,16 @@ function hit(o, side, prevX) {
     sideBump(prevX);
     return true;
   }
+  if (S.board > 0) {
+    S.board = 0;
+    S.invuln = 1.2;
+    sfx.boardBreak();
+    stage.burst(new THREE.Vector3(S.x, S.y + 0.3, S.z), 24);
+    flash('滑板擋下了撞擊！');
+    syncPowerVisuals();
+    smashOrVault(o);
+    return false;
+  }
   if (S.power.shield > 0) {
     S.power.shield = 0;
     S.invuln = 1.2;
@@ -337,28 +418,34 @@ function hit(o, side, prevX) {
     smashOrVault(o);
     return false;
   }
-  S.crashCause = o.kind;
+  S.crashCause = side ? 'caught' : o.kind;
   crash();
+  if (side) flash('被站務員抓到了！');
   return true;
 }
 
 function collectCoin(c) {
   c.taken = true;
   c.magnet = false;
-  S.coins += S.power.double > 0 ? 2 : 1;
+  const n = S.power.double > 0 ? 2 : 1;
+  S.coins += n;
+  meta.track('coins', n);
   sfx.coin();
   stage.burst(c.mesh.position, 9);
   bumpCoinHud();
 }
 
 function sideBump(prevX) {
-  // 換道撞到側面：彈回原車道；短時間內再撞一次就算失敗（在 hit() 判斷）
+  // 換道撞到側面：彈回原車道，站務員追上來；短時間內再撞一次就會被抓（在 hit() 判斷）
+  chaser.alert();
+  sfx.whistle();
+  sfx.bark();
   S.lastBump = S.runTime;
   S.lane = S.prevLane;
   S.x = prevX;
   S.shake = 0.35;
   sfx.bump();
-  flash('小心！再撞一次就出局');
+  flash('站務員追上來了！再撞一次就會被抓');
 }
 
 // ---------- 物理與碰撞 ----------
@@ -376,6 +463,18 @@ function stepPlaying(dt) {
   const runSpeed = S.speed * (S.power.dash > 0 ? DASH_MULT : 1);
   S.z -= runSpeed * dt;
   S.distance += runSpeed * dt;
+  S.distAcc += runSpeed * dt;
+  if (S.onTrain && S.grounded) S.roofAcc += runSpeed * dt;
+  if (S.distAcc >= 10) {
+    meta.track('distance', Math.floor(S.distAcc));
+    meta.track('run', 0, Math.floor(S.distance));
+    S.distAcc -= Math.floor(S.distAcc);
+  }
+  if (S.roofAcc >= 10) {
+    meta.track('roof', Math.floor(S.roofAcc));
+    S.roofAcc -= Math.floor(S.roofAcc);
+  }
+  updateWeather(dt);
   S.x = damp(S.x, LANES[S.lane], 16, dt);
 
   const flying = S.power.jetpack > 0;
@@ -466,6 +565,7 @@ function stepPlaying(dt) {
     pu.taken = true;
     stage.burst(pu.mesh.position, 20);
     activatePower(pu.kind);
+    meta.track('powerups');
   }
 
   // 關卡目標
@@ -481,6 +581,7 @@ function stepPlaying(dt) {
     if ((o.kind === 'train' && dx > 1 && dx < 3.5 && S.y < 3) || ((o.kind === 'low' || o.kind === 'high') && dx < 1)) {
       o.whooshed = true;
       sfx.whoosh();
+      meta.track('nearMiss');
     }
   }
 
@@ -491,6 +592,42 @@ function stepPlaying(dt) {
     sfx.milestone();
     flash(`${ms * 500} 公尺！`);
   }
+}
+
+// ---------- 天氣：隨機暴風雨 ----------
+function updateWeather(dt) {
+  S.weatherT -= dt;
+  if (S.weatherT <= 0) {
+    if (S.storming > 0) {
+      S.weatherT = 14 + Math.random() * 10;
+    } else if (Math.random() < 0.3 && !NO_RAIN.includes(S.theme)) {
+      S.storming = 25 + Math.random() * 20;
+      S.lightningT = 2 + Math.random() * 3;
+      flash('暴風雨來了！');
+    } else {
+      S.weatherT = 12 + Math.random() * 8;
+    }
+  }
+  if (S.storming > 0) {
+    S.storming = Math.max(0, S.storming - dt);
+    if (S.storming === 0) S.weatherT = 18 + Math.random() * 12;
+    if (stormOn()) {
+      S.stormAcc += dt;
+      if (S.stormAcc >= 1) {
+        meta.track('storm', 1);
+        S.stormAcc -= 1;
+      }
+      S.lightningT -= dt;
+      if (S.lightningT <= 0) {
+        S.lightningT = 4 + Math.random() * 6;
+        stage.lightning();
+        sfx.thunder(0.3 + Math.random() * 1.2);
+      }
+    }
+  }
+  const on = stormOn();
+  stage.setStorm(on);
+  sfx.setRain(on ? 1 : 0);
 }
 
 // 迎面列車的轟隆聲與車輪聲
@@ -579,7 +716,19 @@ const ui = {
   banner: $('banner'),
   revive: $('reviveScreen'),
   panel: $('panel'),
+  notes: $('notes'),
 };
+
+// 任務、成就完成的通知
+function showNote(n) {
+  const el = document.createElement('div');
+  el.className = `note note-${n.type}`;
+  el.textContent = n.text;
+  ui.notes.appendChild(el);
+  setTimeout(() => el.remove(), 3600);
+  if (n.type === 'ach') sfx.achievement();
+  else sfx.mission();
+}
 
 // ---------- HUD：道具計時 ----------
 const powerEls = {};
@@ -593,7 +742,21 @@ for (const k of POWER_KEYS) {
   powerEls[k] = { el, bar: el.querySelector('i') };
 }
 
+const boardEl = document.createElement('div');
+boardEl.className = 'pw';
+boardEl.hidden = true;
+boardEl.style.setProperty('--c', '#ff3d7f');
+boardEl.innerHTML = '<b>板</b><span><em>滑板</em><i></i></span>';
+ui.powers.appendChild(boardEl);
+const boardBar = boardEl.querySelector('i');
+
 function updateHud() {
+  const onBoard = S.board > 0;
+  if (boardEl.hidden === onBoard) boardEl.hidden = !onBoard;
+  if (onBoard) {
+    boardBar.style.transform = `scaleX(${S.board / BOARD_TIME})`;
+    boardEl.classList.toggle('ending', S.board < 2);
+  }
   ui.score.textContent = score().toLocaleString();
   ui.coins.textContent = S.coins;
   ui.dist.textContent = `${Math.floor(S.distance)} m`;
@@ -692,6 +855,8 @@ function doRevive() {
   S.revives++;
   level.clearAround(S.z - 45, S.z + 12);
   Object.assign(S, { mode: 'playing', y: GROUND, vy: 0, grounded: true, floorY: GROUND, slideT: 0, invuln: 2.5, lastBump: -10 });
+  chaser.caught = false;
+  chaser.close = 0;
   ui.revive.hidden = true;
   ui.hud.hidden = false;
   sfx.revive();
@@ -716,6 +881,10 @@ function refreshMenuBadges() {
   $('stagesCount').textContent = `${clearedStages().length}/${STAGES.length}`;
   $('outfitCount').textContent = `${OUTFITS.filter((o) => outfitUnlocked(o.id)).length}/${OUTFITS.length}`;
   $('multStart').textContent = `×${scoreMultiplier()}`;
+  meta.refreshDaily();
+  $('missionCount').textContent = `${meta.daily.missions.filter((m) => m.done).length}/3`;
+  $('achCount').textContent = `${meta.ach.length}/${ACHIEVEMENTS.length}`;
+  $('charCount').textContent = `${ownedCharacters().length}/${CHARACTERS.length}`;
 }
 
 // ---------- 關卡 / 服裝 / 商店 面板 ----------
@@ -746,6 +915,36 @@ function renderPanel() {
         <button type="button" data-play="${st.scene}">${done ? '再玩' : '挑戰'}</button>
       </li>`;
     }).join('')}</ol>`;
+  } else if (panelTab === 'missions') {
+    meta.refreshDaily();
+    const d = meta.daily;
+    body.innerHTML = `<p class="panel-hint">每天有三個新任務，午夜更新。完成一個拿金幣，三個全部完成再加 ${DAILY_BONUS} 金幣和一塊滑板。</p><ul class="bar-list">${d.missions.map((m) => `
+      <li class="${m.done ? 'done' : ''}">
+        <div><strong>${missionText(m)}</strong><span class="bar"><i style="transform: scaleX(${m.progress / m.n})"></i></span><small>${Math.floor(m.progress).toLocaleString()} / ${m.n.toLocaleString()}</small></div>
+        <b class="reward">${m.done ? '完成' : `+${m.reward}`}</b>
+      </li>`).join('')}
+      <li class="${d.bonus ? 'done' : ''} bonus"><div><strong>全部完成獎勵</strong><small>${DAILY_BONUS} 金幣 ＋ 滑板 1 塊</small></div><b class="reward">${d.bonus ? '已領取' : `${d.missions.filter((m) => m.done).length}/3`}</b></li>
+    </ul>`;
+  } else if (panelTab === 'achievements') {
+    body.innerHTML = `<p class="panel-hint">已解鎖 ${meta.ach.length} / ${ACHIEVEMENTS.length} 個成就，每個成就都有金幣獎勵。</p><ul class="bar-list">${ACHIEVEMENTS.map((a) => {
+      const done = meta.ach.includes(a.id);
+      const v = Math.min(a.goal, meta.stat(a.stat));
+      return `<li class="${done ? 'done' : ''}">
+        <div><strong>${a.name}</strong><span class="desc">${a.desc}</span><span class="bar"><i style="transform: scaleX(${v / a.goal})"></i></span><small>${Math.floor(v).toLocaleString()} / ${a.goal.toLocaleString()}</small></div>
+        <b class="reward">${done ? '達成' : `+${a.reward}`}</b>
+      </li>`;
+    }).join('')}</ul>`;
+  } else if (panelTab === 'characters') {
+    const owned = ownedCharacters();
+    body.innerHTML = `<p class="panel-hint">用金幣存款解鎖新角色。服裝可以穿在任何角色身上。</p><div class="char-grid">${CHARACTERS.map((c) => {
+      const has = owned.includes(c.id);
+      const active = c.id === charId;
+      return `<button type="button" class="char ${has ? '' : 'locked'}" aria-pressed="${active}" data-char="${c.id}">
+        <i class="char-face char-${c.id}" aria-hidden="true"></i>
+        <strong>${c.name}</strong><span>${c.desc}</span>
+        <small>${active ? '使用中' : has ? '選擇' : `${c.price.toLocaleString()} 金幣解鎖`}</small>
+      </button>`;
+    }).join('')}</div>`;
   } else if (panelTab === 'wardrobe') {
     body.innerHTML = `<p class="panel-hint">破關解鎖新服裝，點一下就能換上。</p><div class="outfit-grid">${OUTFITS.map((o) => {
       const open = outfitUnlocked(o.id);
@@ -759,7 +958,10 @@ function renderPanel() {
     }).join('')}</div>`;
   } else {
     const ups = upgrades();
-    body.innerHTML = `<p class="panel-hint">用存下來的金幣升級道具，讓效果維持更久。</p><ul class="shop-list">${UPGRADABLE.map((k) => {
+    body.innerHTML = `<p class="panel-hint">用存下來的金幣買滑板、升級道具。</p><ul class="shop-list">
+      <li style="--c: #ff3d7f"><b class="glyph">板</b><div><strong>滑板</strong><span>遊戲中按 B 或點兩下畫面使用，${BOARD_TIME} 秒內擋一次撞擊</span><small>目前有 ${boards()} 塊</small></div>
+      <button type="button" data-board="1" class="${bank < BOARD_PRICE ? 'poor' : ''}">${BOARD_PRICE} 金幣</button></li>
+      ${UPGRADABLE.map((k) => {
       const p = POWERUPS[k];
       const lv = ups[k] || 0;
       const max = lv >= MAX_LEVEL;
@@ -776,6 +978,29 @@ function renderPanel() {
   }
 }
 
+function buyCharacter(id) {
+  const c = CHARACTERS.find((x) => x.id === id);
+  const owned = ownedCharacters();
+  if (!owned.includes(id)) {
+    const bank = store.get('bank', 0);
+    if (bank < c.price) {
+      sfx.denied();
+      flash(`還差 ${(c.price - bank).toLocaleString()} 金幣`);
+      return;
+    }
+    store.set('bank', bank - c.price);
+    store.set('chars', [...owned, id]);
+    sfx.buy();
+    meta.checkAchievements();
+    meta.flush();
+  } else sfx.click();
+  charId = id;
+  store.set('char', id);
+  player.applyCharacter(c);
+  renderPanel();
+  refreshMenuStats();
+}
+
 ui.panel.addEventListener('click', (e) => {
   const t = e.target.closest('button');
   if (!t) return;
@@ -788,6 +1013,19 @@ ui.panel.addEventListener('click', (e) => {
     sfx.click();
     selectScene(t.dataset.play);
     closePanel();
+  } else if (t.dataset.char) {
+    buyCharacter(t.dataset.char);
+  } else if (t.dataset.board) {
+    const bank = store.get('bank', 0);
+    if (bank < BOARD_PRICE) {
+      sfx.denied();
+      return;
+    }
+    store.set('bank', bank - BOARD_PRICE);
+    setBoards(boards() + 1);
+    sfx.buy();
+    renderPanel();
+    refreshMenuStats();
   } else if (t.dataset.outfit) {
     if (!outfitUnlocked(t.dataset.outfit)) {
       sfx.denied();
@@ -822,6 +1060,13 @@ ui.panel.addEventListener('click', (e) => {
 $('stagesBtn').addEventListener('click', () => openPanel('stages'));
 $('wardrobeBtn').addEventListener('click', () => openPanel('wardrobe'));
 $('shopBtn').addEventListener('click', () => openPanel('shop'));
+$('missionsBtn').addEventListener('click', () => openPanel('missions'));
+$('achBtn').addEventListener('click', () => openPanel('achievements'));
+$('charBtn').addEventListener('click', () => openPanel('characters'));
+$('boardBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  useBoard();
+});
 $('reviveBtn').addEventListener('click', doRevive);
 $('giveUpBtn').addEventListener('click', declineRevive);
 
@@ -847,8 +1092,13 @@ function startGame() {
   if (S.mode === 'over') resetRun();
   S.mode = 'playing';
   sfx.startChime();
+  sfx.whistle();
+  setTimeout(() => sfx.bark(), 500);
+  chaser.reset();
+  meta.track('runs');
   closePanel();
   updateHud();
+  updateBoardBtn();
   ui.start.hidden = true;
   ui.over.hidden = true;
   ui.pause.hidden = true;
@@ -878,7 +1128,9 @@ function gameOver() {
   $('overDist').textContent = `${Math.floor(S.distance)} m`;
   $('overBest').textContent = Math.max(sc, best).toLocaleString();
   $('newBest').hidden = !isBest;
-  $('overMult').textContent = `分數倍率 ×${S.mult}${S.stageDone ? `　本次完成第 ${S.stage.no} 關` : ''}`;
+  const doneToday = meta.daily.missions.filter((m) => m.done).length;
+  $('overMult').textContent = `分數倍率 ×${S.mult}　今日任務 ${doneToday}/3${S.stageDone ? `　本次完成第 ${S.stage.no} 關` : ''}`;
+  meta.flush();
   if (isBest) sfx.record();
   else sfx.gameOver();
   ui.hud.hidden = true;
@@ -950,7 +1202,7 @@ ui.musicBtn.addEventListener('click', () => {
   sfx.ensure();
   toggleMusic();
 });
-for (const id of ['startBtn', 'againBtn', 'menuBtn', 'resumeBtn', 'pauseBtn', 'stagesBtn', 'wardrobeBtn', 'shopBtn', 'reviveBtn', 'giveUpBtn']) {
+for (const id of ['startBtn', 'againBtn', 'menuBtn', 'resumeBtn', 'pauseBtn', 'stagesBtn', 'wardrobeBtn', 'shopBtn', 'missionsBtn', 'achBtn', 'charBtn', 'reviveBtn', 'giveUpBtn']) {
   $(id).addEventListener('pointerdown', () => {
     sfx.ensure();
     sfx.click();
@@ -989,6 +1241,10 @@ addEventListener('keydown', (e) => {
     toggleMute();
     return;
   }
+  if ((k === 'b' || k === 'B') && S.mode === 'playing') {
+    useBoard();
+    return;
+  }
   const map = {
     ArrowLeft: () => moveLane(-1),
     a: () => moveLane(-1),
@@ -1013,8 +1269,12 @@ addEventListener('keydown', (e) => {
 // ---------- 輸入：觸控滑動 ----------
 let touch = null;
 const canvas = stage.renderer.domElement;
+let lastTap = 0;
 canvas.addEventListener('pointerdown', (e) => {
   touch = { x: e.clientX, y: e.clientY, used: false };
+  const now = performance.now();
+  if (now - lastTap < 280) useBoard();
+  lastTap = now;
 });
 canvas.addEventListener('pointermove', (e) => {
   if (!touch || touch.used) return;
@@ -1032,6 +1292,7 @@ canvas.addEventListener('pointercancel', endTouch);
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && S.mode === 'playing') togglePause();
+  if (document.hidden) meta.flush();
 });
 
 // ---------- 主迴圈 ----------
@@ -1063,6 +1324,12 @@ function update(dt) {
   env.update(S.z, dt);
   syncTheme();
   updateTrainAudio(dt);
+  if (chaser.update(dt, S, S.mode === 'playing' || S.mode === 'crashing') && S.mode === 'playing') {
+    flash('甩掉站務員了！');
+    meta.track('escapes');
+  }
+  for (const n of meta.takeNotes()) showNote(n);
+  if (meta.pending) meta.save();
 }
 
 function frame() {
@@ -1123,4 +1390,4 @@ ui.start.hidden = false;
 frame();
 
 // 方便除錯
-window.__rfc = { S, level, stage, update, present, moveLane, jump, slide, activatePower, clearStage, openPanel, store };
+window.__rfc = { S, level, stage, update, present, moveLane, jump, slide, activatePower, clearStage, openPanel, store, meta, chaser, useBoard, sideBump };

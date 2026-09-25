@@ -39,6 +39,18 @@
 - 撞車後可以花存款續跑（150 金幣，第二次 300），附近的障礙會被清掉並有短暫無敵；每局最多兩次
 - 分數 =（距離 + 金幣 × 10 + 寶箱加分）× 分數倍率
 
+## 每日任務、成就、角色
+
+- **每日任務**：每天三個新任務（例如「跳躍 35 次」「在車頂上跑 250 公尺」「甩掉站務員 2 次」），午夜更新。完成一個拿金幣，三個全部完成再加 500 金幣和一塊滑板
+- **成就**：20 個成就（跳跳虎、馬拉松、破壞王、風雨無阻、全關制霸…），各有進度條和金幣獎勵
+- **角色**：阿橘（預設）、小美（馬尾）、機器人波特（發光面罩）、狐狸阿福（大尾巴），用金幣存款解鎖；服裝可以穿在任何角色身上
+
+## 追趕者、滑板、天氣
+
+- **站務員和狗**：開局會追一小段；換道撞到側面時他會追上來，3 秒內再撞一次就會被抓
+- **滑板**：按 **B** 或點兩下畫面使用，30 秒內擋一次撞擊。每人先送 2 塊，商店 200 金幣一塊，每日任務全完成也送
+- **暴風雨**：戶外場景會隨機下暴風雨，天色變暗、下雨、閃電打雷；隧道、太空、雪山、火山不會下雨
+
 ## 場景
 
 開始畫面可以選擇場景：
@@ -72,6 +84,7 @@
 | 換軌道 | ← → / A D | 左右滑 |
 | 跳躍 | ↑ / W / 空白鍵 | 上滑 |
 | 滑鏟（空中按下可快速落地） | ↓ / S | 下滑 |
+| 用滑板 | B | 點兩下畫面，或右上角「滑板」按鈕 |
 | 暫停 | P / Esc | 右上角按鈕 |
 | 靜音 | M | 右上角按鈕 |
 
@@ -87,7 +100,25 @@ python3 -m http.server 8080
 
 然後打開 <http://localhost:8080>。Three.js 由 jsDelivr CDN 載入，所以第一次需要網路。
 
-也可以直接用 GitHub Pages 發佈這個資料夾。
+## 發佈到網路上
+
+這是純靜態網站，不用建置，任何靜態主機都可以放。
+
+### GitHub Pages（最簡單）
+
+1. 打開 GitHub 上的 repo → **Settings** → 左側 **Pages**
+2. **Source** 選 **Deploy from a branch**
+3. **Branch** 選 `claude/parkour-game-prototype-1epnsp`，資料夾選 `/ (root)`，按 **Save**
+4. 等一兩分鐘，網址會是 <https://freshrogerchang-dev.github.io/Run-for-coins/>
+
+之後每次推送到這個分支，網站會自動更新。repo 裡的 `.nojekyll` 讓 GitHub 直接提供檔案，不經過 Jekyll 處理。
+
+### Cloudflare Pages
+
+1. Cloudflare 後台 → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**
+2. 選這個 repo 和分支 `claude/parkour-game-prototype-1epnsp`
+3. **Framework preset** 選 None，**Build command** 留空，**Build output directory** 填 `/`
+4. 部署完成後會得到 `https://<專案名稱>.pages.dev` 網址
 
 ## 畫面技術
 
@@ -107,15 +138,17 @@ src/
   main.js         遊戲狀態、輸入、物理與碰撞、鏡頭、場景切換
   config.js       遊戲常數（速度、重力、車道位置…）
   themes.js       十個場景的天空、霧、光線、地面、粒子設定
-  stage.js        渲染器、天空、燈光、Bloom、粒子、速度線、天氣粒子、場景過渡
+  stage.js        渲染器、天空、燈光、Bloom、粒子、速度線、天氣粒子、暴風雨與閃電、場景過渡
   environment.js  無限循環場景：軌道 + 前五個場景的佈景
   scenes-extra.js 後五個場景（沙漠、櫻花、雨林、火山、太空）的佈景
   geo.js          幾何合併等共用工具
   level.js        關卡片段生成：列車、斜坡、柵欄、金幣、道具
   powerups.js     道具的 3D 模型
   progress.js     道具／關卡／服裝定義與存檔
+  meta.js         統計、每日任務、成就、角色、滑板
+  chaser.js       站務員和狗
   models.js       列車 / 斜坡 / 柵欄 / 金幣 3D 模型
-  player.js       跑者角色、程序化動畫、12 套服裝與道具外觀
+  player.js       跑者角色（4 個）、程序化動畫、12 套服裝、滑板與道具外觀
   textures.js     Canvas 程序化貼圖
   audio.js        Web Audio 音效、環境音、配樂
 ```

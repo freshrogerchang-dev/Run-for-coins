@@ -67,6 +67,11 @@ export class Stage {
     this.buildSparkles();
     this.buildSpeedLines();
     this.buildSnow(mobile);
+    this.buildRain(mobile);
+    this.storm = 0;
+    this.stormTarget = 0;
+    this.flash = 0;
+    this.flashQueue = [];
 
     this.atmo = atmosphereOf(THEMES.city);
     this.atmoTarget = atmosphereOf(THEMES.city);
@@ -88,6 +93,8 @@ export class Stage {
         uGlow: { value: new THREE.Color('#ffbf73') },
         uCloud: { value: 0.85 },
         uStars: { value: 0 },
+        uFlash: { value: 0 },
+        uStorm: { value: 0 },
         uTime: { value: 0 },
       },
       vertexShader: /* glsl */ `
@@ -105,6 +112,8 @@ export class Stage {
         uniform vec3 uGlow;
         uniform float uCloud;
         uniform float uStars;
+        uniform float uFlash;
+        uniform float uStorm;
         uniform float uTime;
         varying vec3 vDir;
         float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -143,9 +152,11 @@ export class Stage {
             c = smoothstep(0.52, 0.8, c) * smoothstep(0.0, 0.18, d.y);
             vec3 cloudCol = mix(vec3(1.0, 0.93, 0.86), vec3(1.0), h);
             cloudCol = mix(cloudCol, uHorizon * 0.7 + uGlow * 0.15, uStars);
+            cloudCol = mix(cloudCol, vec3(0.32, 0.34, 0.4), uStorm * 0.85);
             col = mix(col, cloudCol + pow(s, 8.0) * uGlow * 0.3, c * uCloud);
           }
           if (d.y < 0.0) col = mix(uHorizon, uHorizon * 0.85, min(1.0, -d.y * 4.0));
+          col = mix(col, vec3(1.3, 1.35, 1.6), uFlash * 0.7);
           gl_FragColor = vec4(col, 1.0);
           #include <tonemapping_fragment>
           #include <colorspace_fragment>
@@ -310,6 +321,34 @@ export class Stage {
     this.scene.add(this.snow);
   }
 
+  // 暴風雨：雨絲 + 天色變暗 + 閃電
+  buildRain(mobile) {
+    const N = mobile ? 500 : 1100;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 6), 3));
+    this.rainData = Array.from({ length: N }, () => ({
+      x: (Math.random() - 0.5) * 40,
+      y: Math.random() * 20,
+      z: -Math.random() * 60 + 6,
+      v: 26 + Math.random() * 10,
+    }));
+    this.rain = new THREE.LineSegments(
+      geo,
+      new THREE.LineBasicMaterial({ color: '#b8cde0', transparent: true, opacity: 0, depthWrite: false, fog: false }),
+    );
+    this.rain.frustumCulled = false;
+    this.rain.visible = false;
+    this.scene.add(this.rain);
+  }
+
+  setStorm(on) {
+    this.stormTarget = on ? 1 : 0;
+  }
+
+  lightning() {
+    this.flashQueue = [0, 0.12, 0.3 + Math.random() * 0.2];
+  }
+
   setTheme(theme, instant = false) {
     this.atmoTarget = atmosphereOf(theme);
     this.pendingParticles = theme.particles;
@@ -350,19 +389,27 @@ export class Stage {
     u.uZenith.value.copy(a.zenith);
     u.uGlow.value.copy(a.glow);
     u.uSunDir.value.copy(a.sunDir).normalize();
-    u.uCloud.value = a.cloud;
-    u.uStars.value = a.stars;
-    this.scene.fog.color.copy(a.fogColor);
-    this.scene.fog.near = a.fogNear;
-    this.scene.fog.far = a.fogFar;
-    this.scene.background.copy(a.fogColor);
+    const st = this.storm || 0;
+    const fl = this.flash || 0;
+    const dim = 1 - 0.6 * st;
+    u.uStorm.value = st;
+    u.uHorizon.value.multiplyScalar(dim);
+    u.uZenith.value.multiplyScalar(1 - 0.75 * st);
+    u.uGlow.value.multiplyScalar(1 - st);
+    u.uCloud.value = Math.max(a.cloud, st);
+    u.uStars.value = a.stars * (1 - st);
+    u.uFlash.value = fl;
+    this.scene.fog.color.copy(a.fogColor).multiplyScalar(dim);
+    this.scene.fog.near = a.fogNear * (1 - 0.35 * st);
+    this.scene.fog.far = a.fogFar * (1 - 0.3 * st);
+    this.scene.background.copy(this.scene.fog.color);
     this.hemi.color.copy(a.hemiSky);
     this.hemi.groundColor.copy(a.hemiGround);
-    this.hemi.intensity = a.hemiIntensity;
+    this.hemi.intensity = a.hemiIntensity * (1 - 0.4 * st) + fl * 2.5;
     this.sun.color.copy(a.sunColor);
-    this.sun.intensity = a.sunIntensity;
+    this.sun.intensity = a.sunIntensity * (1 - 0.8 * st);
     this.sunOffset.copy(a.sunOffset);
-    this.renderer.toneMappingExposure = a.exposure;
+    this.renderer.toneMappingExposure = a.exposure * (1 - 0.08 * st) + fl * 0.4;
     this.bloom.strength = a.bloom;
     this.scene.environmentIntensity = a.envIntensity;
     this.snow.material.opacity = a.snow * 0.9;
@@ -370,7 +417,38 @@ export class Stage {
   }
 
   update(dt, focus, speedFactor, time) {
+    // 閃電：排程好的幾次閃光
+    this.flash = Math.max(0, this.flash - dt * 6);
+    if (this.flashQueue.length) {
+      this.flashQueue = this.flashQueue.map((t) => t - dt);
+      if (this.flashQueue[0] <= 0) {
+        this.flash = 1;
+        this.flashQueue.shift();
+      }
+    }
+    this.storm += (this.stormTarget - this.storm) * (1 - Math.exp(-dt * 0.8));
     this.applyAtmosphere(1 - Math.exp(-dt * 1.4));
+
+    // 雨絲
+    this.rain.visible = this.storm > 0.02;
+    if (this.rain.visible) {
+      this.rain.material.opacity = this.storm * 0.55;
+      const lp = this.rain.geometry.attributes.position;
+      const cam = this.camera.position;
+      const drift = dt * ((this.runSpeed || 0) + 1);
+      this.rainData.forEach((r, i) => {
+        r.y -= r.v * dt;
+        r.z += drift;
+        if (r.y < -6) r.y += 22;
+        if (r.z > 6) r.z -= 60;
+        const x = cam.x + r.x;
+        const y = cam.y + r.y - 6;
+        const z = cam.z + r.z;
+        lp.setXYZ(i * 2, x, y, z);
+        lp.setXYZ(i * 2 + 1, x + 0.05, y + 0.9, z - 0.25);
+      });
+      lp.needsUpdate = true;
+    }
     this.sky.position.copy(this.camera.position);
     this.sky.material.uniforms.uTime.value = time;
 
