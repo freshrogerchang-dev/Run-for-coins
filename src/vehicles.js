@@ -329,7 +329,181 @@ function rovers(v) {
   return P;
 }
 
-const BUILDERS = { bus, plow, hoverbus, camels, floats, elephants, tortoises, rovers };
+
+// ---------------- 黃色潛水艇（海底） ----------------
+function subs(v) {
+  const P = new Parts();
+  const hull = std(['#ffd23f', '#ff8a3d', '#e84a5f'][v], { roughness: 0.35, metalness: 0.3 });
+  const dark = std('#2a2d33', { roughness: 0.6 });
+  const steel = std('#9aa3ad', { roughness: 0.3, metalness: 0.8 });
+  const port = glow(1.2, 3, 3.6);
+  const L = 11.2;
+  P.add(hull, new THREE.CapsuleGeometry(1.1, L - 2.2, 8, 20), 0, 2.2, -L / 2 - 0.2, WHEEL);
+  P.add(hull, rbox(1.4, 1.0, 3.2, 0.3), 0, 3.0, -4.2);
+  P.add(steel, box(1.2, 0.06, 3.0), 0, 3.52, -4.2);
+  P.add(steel, cyl(0.07, 0.07, 1.0, 8), 0.3, 3.9, -3.2);
+  P.add(steel, box(0.12, 0.12, 0.4), 0.3, 4.35, -3.05);
+  for (let z = -1.8; z > -L + 1; z -= 1.6) {
+    for (const x of [-1.08, 1.08]) {
+      P.add(port, cyl(0.22, 0.22, 0.06, 16), x, 2.3, z, 0, 0, WHEEL);
+      P.add(steel, new THREE.TorusGeometry(0.24, 0.04, 6, 16), x, 2.3, z, 0, WHEEL, 0);
+    }
+  }
+  P.add(steel, cyl(0.5, 0.2, 0.6, 14), 0, 2.2, -L - 0.2, WHEEL);
+  for (let k = 0; k < 3; k++) P.add(dark, box(0.12, 1.1, 0.25), 0, 2.2, -L - 0.55, 0, 0, (k * Math.PI) / 3);
+  P.add(hull, box(0.12, 1.2, 1.0), 0, 3.0, -L + 0.5);
+  P.add(hull, box(2.0, 0.1, 0.9), 0, 2.2, -L + 0.5);
+  P.add(glow(4, 3.8, 3.2), cyl(0.2, 0.2, 0.05, 14), 0, 2.2, 0.0, WHEEL);
+  P.lamp(0, 2.2, 0.3);
+  return P;
+}
+
+// ---------------- 冰淇淋車（糖果王國） ----------------
+function icecream(v) {
+  const P = new Parts();
+  const body = std(['#ffd1e8', '#bdf0ff', '#fff3b0'][v], { roughness: 0.4 });
+  const pink = std('#ff6fa8', { roughness: 0.45 });
+  const white = std('#ffffff', { roughness: 0.5 });
+  const glass = std('#1d2a38', { roughness: 0.08, metalness: 0.5 });
+  const dark = std('#2a2d33', { roughness: 0.8 });
+  const cone = std('#e0a15a', { roughness: 0.8 });
+  const scoop = [std('#ff9ad5'), std('#9be7a8'), std('#fff1c1')];
+  P.add(body, rbox(2.3, 2.95, 11.4, 0.25), 0, 2.03, -5.9);
+  P.add(glass, box(2.0, 0.9, 0.05), 0, 2.3, 0.0);
+  P.add(glass, box(2.34, 0.8, 2.0), 0, 2.3, -1.4);
+  P.add(white, box(2.2, 0.05, 11.0), 0, 3.52, -5.9);
+  // 條紋遮陽棚與販賣窗
+  for (let i = 0; i < 8; i++) P.add(i % 2 ? white : pink, box(0.5, 0.08, 0.6), -1.4, 3.0, -3.5 - i * 0.6, 0, 0, 0.35);
+  P.add(glass, box(0.05, 1.0, 4.4), -1.16, 2.2, -5.6);
+  P.add(pink, box(2.34, 0.3, 11.4), 0, 0.95, -5.9);
+  // 車頂的大冰淇淋
+  P.add(cone, new THREE.ConeGeometry(0.45, 1.2, 14), 0.6, 4.0, -9.8, Math.PI);
+  P.add(scoop[v], sph(0.5), 0.6, 4.75, -9.8);
+  P.add(std('#e53935'), sph(0.12, 10, 8), 0.6, 5.28, -9.8);
+  for (const x of [-0.75, 0.75]) {
+    P.add(glow(4, 3.8, 3.2), cyl(0.12, 0.12, 0.05, 14), x, 0.9, 0.02, WHEEL);
+    P.lamp(x, 0.9, 0.2);
+  }
+  for (const z of [-2.2, -9.2]) for (const x of [-1.02, 1.02]) P.add(dark, cyl(0.46, 0.46, 0.3, 20), x, 0.66, z, 0, 0, WHEEL);
+  return P;
+}
+
+// ---------------- 三角龍（恐龍谷） ----------------
+function dinos(v) {
+  const P = new Parts();
+  const skin = std(['#6a8f3a', '#8a7a3a', '#4f7a6a'][v], { roughness: 0.9 });
+  const belly = std('#d9c89a', { roughness: 0.9 });
+  const frill = std('#c8553d', { roughness: 0.7 });
+  const horn = std('#f3ead6', { roughness: 0.4 });
+  const dark = std('#1a1a1a', { roughness: 0.4 });
+  for (let i = 0; i < 2; i++) {
+    const zc = -3.4 - i * 6;
+    P.add(skin, sph(1, 22, 16), 0, 2.2, zc, 0, 0, 0, 1.05, 1.15, 2.2);
+    P.add(belly, sph(1, 16, 10), 0, 1.6, zc, 0, 0, 0, 0.8, 0.5, 1.8);
+    for (let k = 0; k < 4; k++) P.add(frill, new THREE.ConeGeometry(0.22, 0.4, 5), 0, 3.4 - Math.abs(k - 1.5) * 0.12, zc + 1.0 - k * 0.7);
+    P.add(skin, sph(0.7, 18, 14), 0, 2.3, zc + 2.2, 0, 0, 0, 1, 0.9, 1.2);
+    P.add(frill, cyl(1.05, 1.05, 0.18, 20, 1, false, 0, Math.PI), 0, 2.7, zc + 1.9, WHEEL, 0, 0, 1, 1, 1);
+    for (const x of [-0.35, 0.35]) P.add(horn, new THREE.ConeGeometry(0.1, 0.9, 10), x, 2.8, zc + 2.8, 1.2);
+    P.add(horn, new THREE.ConeGeometry(0.08, 0.45, 10), 0, 2.1, zc + 3.0, 1.3);
+    for (const x of [-0.3, 0.3]) P.add(dark, sph(0.07, 8, 6), x, 2.45, zc + 2.72);
+    P.add(skin, new THREE.ConeGeometry(0.5, 2.2, 12), 0, 1.9, zc - 2.9, -1.35);
+    const legGeo = cyl(0.3, 0.34, 1.35, 12).translate(0, -0.66, 0);
+    for (const [x, dz] of [[-0.65, 1.3], [0.65, 1.3], [-0.65, -1.3], [0.65, -1.3]]) P.leg(skin, legGeo, x, 1.55, zc + dz, 1.35, dz > 0);
+  }
+  return P;
+}
+
+// ---------------- 南瓜馬車（南瓜鎮） ----------------
+function pumpkins(v) {
+  const P = new Parts();
+  const orange = std(['#ff7a1a', '#ff9a2e', '#e8631a'][v], { roughness: 0.55 });
+  const stem = std('#4a6a2a', { roughness: 0.8 });
+  const gold = std('#d4a017', { roughness: 0.3, metalness: 0.8 });
+  const dark = std('#1a1420', { roughness: 0.6 });
+  const face = glow(4, 2.2, 0.4);
+  for (let i = 0; i < 2; i++) {
+    const zc = -2.9 - i * 6;
+    // 南瓜本體：幾顆壓扁的球拼出瓣紋
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2;
+      P.add(orange, sph(1, 20, 14), Math.cos(a) * 0.35, 2.3, zc + Math.sin(a) * 0.6, 0, 0, 0, 0.8, 1.15, 1.9);
+    }
+    P.add(stem, cyl(0.12, 0.18, 0.55, 8), 0, 3.6, zc, 0, 0, 0.2);
+    P.add(dark, box(1.5, 0.08, 2.4), 0, 3.47, zc);
+    // 發光的鬼臉窗
+    for (const x of [-1.13, 1.13]) {
+      P.add(face, box(0.05, 0.35, 0.35), x, 2.55, zc + 0.8, 0, 0, 0);
+      P.add(face, box(0.05, 0.35, 0.35), x, 2.55, zc - 0.8, 0, 0, 0);
+      P.add(face, box(0.05, 0.18, 1.6), x, 1.95, zc);
+    }
+    P.add(face, box(0.6, 0.3, 0.05), 0, 2.5, zc + 1.95);
+    P.add(dark, box(1.9, 0.18, 4.6), 0, 1.0, zc);
+    for (const dz of [-1.7, 1.7]) {
+      for (const x of [-1.05, 1.05]) {
+        P.add(dark, new THREE.TorusGeometry(0.55, 0.07, 8, 20), x, 0.75, zc + dz, 0, WHEEL, 0);
+        P.add(gold, cyl(0.1, 0.1, 0.16, 8), x, 0.75, zc + dz, 0, 0, WHEEL);
+      }
+    }
+    P.add(gold, box(0.06, 0.06, 4.8), -1.12, 1.15, zc);
+    P.add(gold, box(0.06, 0.06, 4.8), 1.12, 1.15, zc);
+  }
+  return P;
+}
+
+// ---------------- 飛船（天空之城） ----------------
+function airships(v) {
+  const P = new Parts();
+  const env = std(['#e84a5f', '#2ec4b6', '#ffd23f'][v], { roughness: 0.5 });
+  const stripe = std('#ffffff', { roughness: 0.5 });
+  const wood = std('#8a5a36', { roughness: 0.8 });
+  const brass = std('#c9a04a', { roughness: 0.3, metalness: 0.8 });
+  const glass = std('#1d2a38', { roughness: 0.08, metalness: 0.5 });
+  P.add(env, sph(1, 28, 18), 0, 2.55, -5.9, 0, 0, 0, 1.15, 0.97, 5.8);
+  P.add(stripe, sph(1, 28, 18), 0, 2.55, -5.9, 0, 0, 0, 1.17, 0.2, 5.7);
+  P.add(stripe, box(1.2, 0.05, 6), 0, 3.5, -5.9);
+  for (const [x, y, rz] of [[0, 3.3, 0], [0, 1.8, 0], [0.9, 2.55, WHEEL], [-0.9, 2.55, WHEEL]]) {
+    P.add(env, box(0.1, 1.0, 1.4), x, y, -11.2, 0, 0, rz);
+  }
+  P.add(wood, rbox(1.1, 0.7, 3.2, 0.1), 0, 1.05, -5.4);
+  P.add(glass, box(1.14, 0.3, 2.8), 0, 1.12, -5.4);
+  for (const z of [-4.2, -6.6]) for (const x of [-0.45, 0.45]) P.add(brass, cyl(0.02, 0.02, 0.9, 5), x, 1.6, z);
+  for (const x of [-0.95, 0.95]) {
+    P.add(brass, cyl(0.12, 0.12, 0.3, 10), x, 1.1, -7.2, WHEEL);
+    P.add(wood, box(0.06, 0.9, 0.12), x, 1.1, -7.38);
+  }
+  P.add(glow(4, 3.8, 3.2), cyl(0.12, 0.12, 0.05, 12), 0, 1.05, -3.78, WHEEL);
+  P.lamp(0, 1.05, -3.5);
+  return P;
+}
+
+// ---------------- 大熊貓（熊貓竹林） ----------------
+function pandas(v) {
+  const P = new Parts();
+  const white = std('#f4f1ea', { roughness: 0.95 });
+  const black = std('#1c1c1f', { roughness: 0.9 });
+  const pink = std('#f2a0a8', { roughness: 0.8 });
+  const bamboo = std('#6aa84f', { roughness: 0.7 });
+  for (let i = 0; i < 2; i++) {
+    const zc = -3.3 - i * 6;
+    P.add(white, sph(1, 22, 16), 0, 2.25, zc - 0.3, 0, 0, 0, 1.08, 1.08, 1.9);
+    P.add(black, sph(1, 22, 16), 0, 2.3, zc + 0.9, 0, 0, 0, 1.1, 1.05, 0.6);
+    P.add(white, sph(0.85, 22, 16), 0, 2.55, zc + 2.0);
+    for (const s of [-1, 1]) {
+      P.add(black, sph(0.28, 12, 10), s * 0.55, 3.25, zc + 1.9);
+      P.add(black, sph(0.2, 12, 10), s * 0.3, 2.65, zc + 2.72, 0, 0, s * 0.5, 1, 1.3, 0.6);
+      P.add(white, sph(0.06, 8, 6), s * 0.3, 2.7, zc + 2.83);
+    }
+    P.add(black, sph(0.1, 10, 8), 0, 2.35, zc + 2.85);
+    P.add(pink, sph(0.08, 8, 6), 0, 2.2, zc + 2.8);
+    P.add(bamboo, cyl(0.06, 0.06, 1.4, 8), 0, 2.2, zc + 2.85, 0, 0, WHEEL);
+    P.add(white, box(1.3, 0.1, 1.6), 0, 3.35, zc - 0.4);
+    const legGeo = cyl(0.3, 0.34, 1.35, 12).translate(0, -0.66, 0);
+    for (const [x, dz] of [[-0.6, 1.0], [0.6, 1.0], [-0.6, -1.5], [0.6, -1.5]]) P.leg(black, legGeo, x, 1.55, zc + dz, 1.35, dz > 0);
+  }
+  return P;
+}
+
+const BUILDERS = { bus, plow, hoverbus, camels, floats, elephants, tortoises, rovers, subs, icecream, dinos, pumpkins, airships, pandas };
 export const VEHICLE_NAMES = {
   train: '列車',
   bus: '觀光巴士',
@@ -340,8 +514,14 @@ export const VEHICLE_NAMES = {
   elephants: '大象',
   tortoises: '熔岩巨龜',
   rovers: '月球車',
+  subs: '潛水艇',
+  icecream: '冰淇淋車',
+  dinos: '三角龍',
+  pumpkins: '南瓜馬車',
+  airships: '飛船',
+  pandas: '大熊貓',
 };
-export const ANIMALS = ['camels', 'elephants', 'tortoises'];
+export const ANIMALS = ['camels', 'elephants', 'tortoises', 'dinos', 'pandas'];
 
 export class VehicleModels {
   constructor(glowMat) {

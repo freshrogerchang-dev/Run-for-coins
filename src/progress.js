@@ -29,8 +29,11 @@ export const POWERUPS = {
   spring: { name: '彈跳鞋', desc: '跳得超高，可以直接跳上車頂', color: '#2ecc71', glyph: '跳', base: 9, per: 2, weight: 2 },
   shield: { name: '防護罩', desc: '抵擋一次撞擊', color: '#2fa8ff', glyph: '盾', base: 20, per: 5, weight: 1.6 },
   mystery: { name: '神秘寶箱', desc: '隨機得到金幣、分數或其他道具', color: '#ff7ac8', glyph: '？', weight: 1.4 },
+  slowmo: { name: '時光沙漏', desc: '整個世界慢下來，更容易閃避', color: '#5ec8ff', glyph: '慢', base: 6, per: 1, weight: 1.3 },
+  coinrain: { name: '金幣雨', desc: '前方三條路同時下起金幣雨', color: '#ffc21a', glyph: '雨', weight: 1.3 },
+  giant: { name: '巨人蘑菇', desc: '變成巨人，連列車都能撞飛', color: '#ff4d3d', glyph: '巨', base: 5, per: 1, weight: 1.1 },
 };
-export const UPGRADABLE = ['dash', 'jetpack', 'magnet', 'double', 'spring', 'shield'];
+export const UPGRADABLE = ['dash', 'jetpack', 'magnet', 'double', 'spring', 'shield', 'slowmo', 'giant'];
 export const UPGRADE_COST = [120, 300, 600, 1200, 2400];
 export const MAX_LEVEL = UPGRADE_COST.length;
 
@@ -101,6 +104,36 @@ export const OUTFITS = [
     hat: 'bubble', extras: [],
   },
   {
+    id: 'diver', name: '潛水員',
+    colors: { top: '#1b3a5a', trim: '#ffb000', pants: '#1b3a5a', hat: '#ffb000', hair: '#2b1b12', pack: '#e84a5f', shoe: '#ffb000', sole: '#1b1b1b' },
+    hat: 'mask', extras: [],
+  },
+  {
+    id: 'chef', name: '甜點師',
+    colors: { top: '#ffffff', trim: '#ff7ac8', pants: '#ff9ad5', hat: '#ffffff', hair: '#6b3e26', pack: '#ffd1e8', shoe: '#ffffff', sole: '#ff7ac8' },
+    hat: 'chef', extras: [],
+  },
+  {
+    id: 'dinosuit', name: '恐龍裝',
+    colors: { top: '#5aa84a', trim: '#f2c14e', pants: '#5aa84a', hat: '#5aa84a', hair: '#2b1b12', pack: '#3a7a2a', shoe: '#3a7a2a', sole: '#f2c14e' },
+    hat: 'dinohood', extras: [],
+  },
+  {
+    id: 'witch', name: '小巫師',
+    colors: { top: '#4a2a6a', trim: '#ff8a1c', pants: '#1a1420', hat: '#2a1a3a', hair: '#ff8a1c', pack: '#ff8a1c', shoe: '#1a1420', sole: '#ff8a1c' },
+    hat: 'witch', extras: [],
+  },
+  {
+    id: 'pilot', name: '飛行員',
+    colors: { top: '#7a5a3a', trim: '#e8e0d0', pants: '#4a4a3a', hat: '#6a4a2a', hair: '#2b1b12', pack: '#6a4a2a', shoe: '#3a2a1a', sole: '#1a1a1a' },
+    hat: 'aviator', extras: ['scarf'],
+  },
+  {
+    id: 'pandasuit', name: '熊貓裝',
+    colors: { top: '#f4f1ea', trim: '#1c1c1f', pants: '#1c1c1f', hat: '#f4f1ea', hair: '#2b1b12', pack: '#6aa84f', shoe: '#1c1c1f', sole: '#f4f1ea' },
+    hat: 'pandahood', extras: [],
+  },
+  {
     id: 'golden', name: '黃金傳奇',
     colors: { top: '#ffc21a', trim: '#fff1b0', pants: '#b8860b', hat: '#ffd700', hair: '#2b1b12', pack: '#ffd700', shoe: '#ffd700', sole: '#b8860b' },
     hat: 'crown', extras: ['sunglasses'], metallic: true,
@@ -142,7 +175,7 @@ export function outfitUnlocked(id) {
 }
 
 export function outfitRequirement(id) {
-  if (id === 'golden') return '完成全部 10 關';
+  if (id === 'golden') return `完成全部 ${STAGES.length} 關`;
   const st = STAGES.find((s) => s.outfit === id);
   return st ? `完成第 ${st.no} 關「${st.name}」` : '';
 }

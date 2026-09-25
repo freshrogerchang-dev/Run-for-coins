@@ -60,6 +60,7 @@
 
     <div id="powers" class="powers" aria-label="道具效果"></div>
     <div id="notes" class="notes" aria-live="polite"></div>
+    <div id="combo" class="combo" hidden></div>
     <div id="toast" class="toast" hidden></div>
     <div id="banner" class="banner" role="status" hidden><h3></h3><p></p></div>
 
@@ -80,7 +81,7 @@
           <button type="button" id="missionsBtn" class="chip-btn"><span>任務</span><b id="missionCount" class="num">0/3</b></button>
           <button type="button" id="stagesBtn" class="chip-btn"><span>關卡</span><b id="stagesCount" class="num">0/10</b></button>
           <button type="button" id="achBtn" class="chip-btn"><span>成就</span><b id="achCount" class="num">0/20</b></button>
-          <button type="button" id="charBtn" class="chip-btn"><span>角色</span><b id="charCount" class="num">1/4</b></button>
+          <button type="button" id="charBtn" class="chip-btn"><span>角色・寵物</span><b id="charCount" class="num">1/4</b></button>
           <button type="button" id="wardrobeBtn" class="chip-btn"><span>服裝</span><b id="outfitCount" class="num">1/12</b></button>
           <button type="button" id="shopBtn" class="chip-btn"><span>商店</span><b>滑板・升級</b></button>
         </div>
@@ -97,9 +98,15 @@
             <button type="button" role="radio" data-scene="jungle" aria-checked="false"><i></i><span>熱帶雨林</span></button>
             <button type="button" role="radio" data-scene="volcano" aria-checked="false"><i></i><span>火山熔岩</span></button>
             <button type="button" role="radio" data-scene="space" aria-checked="false"><i></i><span>太空基地</span></button>
+            <button type="button" role="radio" data-scene="underwater" aria-checked="false"><i></i><span>海底世界</span></button>
+            <button type="button" role="radio" data-scene="candy" aria-checked="false"><i></i><span>糖果王國</span></button>
+            <button type="button" role="radio" data-scene="dino" aria-checked="false"><i></i><span>恐龍谷</span></button>
+            <button type="button" role="radio" data-scene="halloween" aria-checked="false"><i></i><span>南瓜鎮</span></button>
+            <button type="button" role="radio" data-scene="skycity" aria-checked="false"><i></i><span>天空之城</span></button>
+            <button type="button" role="radio" data-scene="bamboo" aria-checked="false"><i></i><span>熊貓竹林</span></button>
             <button type="button" role="radio" data-scene="tour" aria-checked="false" class="tour"><i></i><span>環遊模式</span></button>
           </div>
-          <p class="scene-note">環遊模式每 600 公尺換一個場景，十個場景輪流出現</p>
+          <p class="scene-note">環遊模式每 600 公尺換一個場景，十六個場景輪流出現</p>
         </fieldset>
         <button id="startBtn" class="btn-primary">開始奔跑</button>
         <ul class="controls">
@@ -110,7 +117,7 @@
           <li><kbd>P</kbd><span>暫停</span></li>
         </ul>
         <p class="touch-hint">手機：左右滑換道，上滑跳，下滑鏟，點兩下用滑板</p>
-        <p class="tip">撿發光泡泡裡的道具：衝刺鞋、噴射背包、磁鐵、雙倍金幣、彈跳鞋、防護罩和神秘寶箱。每個場景的障礙不一樣：列車、巴士、鏟雪車、駱駝、大象、巨龜…迎面衝來的要提早換道！</p>
+        <p class="tip">撿發光泡泡裡的道具：衝刺鞋、噴射背包、磁鐵、雙倍金幣、彈跳鞋、防護罩、時光沙漏、金幣雨、巨人蘑菇和神秘寶箱。踩藍色箭頭加速帶會衝刺，連續吃金幣有連擊獎勵。每個場景的障礙不一樣：列車、巴士、鏟雪車、駱駝、大象、巨龜…迎面衝來的要提早換道！</p>
       </div>
     </section>
 

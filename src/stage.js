@@ -480,8 +480,8 @@ export class Stage {
       const p = this.snowOffsets;
       const cam = this.camera.position;
       const type = this.particleStyle?.type || 'snow';
-      const fallRate = { snow: 2.2, petals: 1.1, embers: -2.6, spores: 0.15 }[type];
-      const sway = { snow: 0.4, petals: 1.8, embers: 0.7, spores: 0.6 }[type];
+      const fallRate = { snow: 2.2, petals: 1.1, embers: -2.6, spores: 0.15, bubbles: -1.4 }[type];
+      const sway = { snow: 0.4, petals: 1.8, embers: 0.7, spores: 0.6, bubbles: 0.5 }[type];
       const fall = dt * fallRate;
       const drift = dt * ((this.runSpeed || 0) + 1);
       for (let i = 0; i < p.length; i += 3) {

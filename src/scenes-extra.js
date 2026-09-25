@@ -13,6 +13,7 @@ import {
   hullGlowTexture,
 } from './textures.js';
 import { SEG_LEN } from './config.js';
+import { EXTRA_BUILDERS2 } from './scenes-extra2.js';
 
 const L = SEG_LEN;
 const HALF = -L / 2;
@@ -647,6 +648,7 @@ export const EXTRA_BUILDERS = {
   jungle: build_jungle,
   volcano: build_volcano,
   space: build_space,
+  ...EXTRA_BUILDERS2,
 };
 
 // 全域動畫：熔岩流動、瀑布、太空場景天上的行星

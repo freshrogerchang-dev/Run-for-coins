@@ -1,5 +1,6 @@
 // 長期進度：統計、每日任務、成就、角色、滑板
-import { store, clearedStages, OUTFITS, outfitUnlocked } from './progress.js';
+import { store, clearedStages, OUTFITS, STAGES, outfitUnlocked } from './progress.js';
+import { ownedPets, PETS } from './pets.js';
 
 // ---------- 角色 ----------
 export const CHARACTERS = [
@@ -35,7 +36,12 @@ const POOL = [
   { key: 'hoverboards', text: (n) => `使用滑板 ${n} 次`, ns: [1, 2, 3] },
   { key: 'escapes', text: (n) => `甩掉站務員 ${n} 次`, ns: [1, 2, 3] },
   { key: 'storm', text: (n) => `在暴風雨中跑 ${n} 秒`, ns: [20, 40, 60] },
+  { key: 'combo', text: (n) => `單場金幣連擊達到 ${n}`, ns: [15, 25, 40], single: true },
+  { key: 'boosts', text: (n) => `踩加速帶 ${n} 次`, ns: [3, 6, 10] },
+  { key: 'giantSmash', text: (n) => `用巨人蘑菇撞飛 ${n} 個障礙`, ns: [3, 6, 10] },
 ];
+// 「單場最佳」類型：記錄最大值而不是累加
+const SINGLE = { run: 'bestRun', combo: 'maxCombo' };
 export const DAILY_BONUS = 500;
 
 function today() {
@@ -91,9 +97,13 @@ export const ACHIEVEMENTS = [
   { id: 'escape20', name: '逃脫專家', desc: '甩掉站務員 20 次', stat: 'escapes', goal: 20, reward: 300 },
   { id: 'storm120', name: '風雨無阻', desc: '在暴風雨中累積跑 120 秒', stat: 'storm', goal: 120, reward: 300 },
   { id: 'daily15', name: '每日好習慣', desc: '完成 15 個每日任務', stat: 'missionsDone', goal: 15, reward: 800 },
-  { id: 'stages10', name: '全關制霸', desc: '完成全部 10 關', stat: 'stages', goal: 10, reward: 2000 },
-  { id: 'outfits', name: '衣櫃滿滿', desc: '解鎖全部 12 套服裝', stat: 'outfits', goal: 12, reward: 1000 },
+  { id: 'stages10', name: '全關制霸', desc: `完成全部 ${STAGES.length} 關`, stat: 'stages', goal: STAGES.length, reward: 3000 },
+  { id: 'outfits', name: '衣櫃滿滿', desc: `解鎖全部 ${OUTFITS.length} 套服裝`, stat: 'outfits', goal: OUTFITS.length, reward: 1500 },
   { id: 'chars', name: '好朋友們', desc: '擁有全部 4 個角色', stat: 'chars', goal: 4, reward: 1000 },
+  { id: 'combo100', name: '連擊大師', desc: '單場金幣連擊達到 100', stat: 'maxCombo', goal: 100, reward: 800 },
+  { id: 'boost50', name: '加速狂', desc: '累積踩 50 次加速帶', stat: 'boosts', goal: 50, reward: 400 },
+  { id: 'giant50', name: '巨人來了', desc: '用巨人蘑菇撞飛 50 個障礙', stat: 'giantSmash', goal: 50, reward: 500 },
+  { id: 'pets', name: '寵物之家', desc: `擁有全部 ${PETS.length} 隻寵物`, stat: 'pets', goal: PETS.length, reward: 1000 },
 ];
 
 export class Meta {
@@ -118,6 +128,7 @@ export class Meta {
     if (key === 'stages') return clearedStages().length;
     if (key === 'outfits') return OUTFITS.filter((o) => outfitUnlocked(o.id)).length;
     if (key === 'chars') return ownedCharacters().length;
+    if (key === 'pets') return ownedPets().length;
     return this.stats[key] || 0;
   }
 
@@ -127,15 +138,15 @@ export class Meta {
 
   // 記錄一個事件；run 用於「單場」類型的任務
   track(key, n = 1, runValue) {
-    if (key === 'run') {
-      this.stats.bestRun = Math.max(this.stats.bestRun || 0, runValue);
+    if (SINGLE[key]) {
+      this.stats[SINGLE[key]] = Math.max(this.stats[SINGLE[key]] || 0, runValue);
     } else {
       this.stats[key] = (this.stats[key] || 0) + n;
     }
     this.refreshDaily();
     for (const m of this.daily.missions) {
       if (m.done || m.key !== key) continue;
-      m.progress = key === 'run' ? Math.max(m.progress, runValue) : m.progress + n;
+      m.progress = SINGLE[key] ? Math.max(m.progress, runValue) : m.progress + n;
       if (m.progress >= m.n) {
         m.progress = m.n;
         m.done = true;

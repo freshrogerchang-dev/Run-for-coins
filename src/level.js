@@ -8,7 +8,33 @@ import {
   MOVING_TRAIN_SPEED,
   MOVING_TRAIN_TRIGGER,
 } from './config.js';
+import * as THREE from 'three';
 import { POWERUPS } from './progress.js';
+
+// 加速帶：往前的發光箭頭
+function arrowTexture() {
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, 64, 128);
+  ctx.fillStyle = '#ffffff';
+  for (let y = 0; y < 128; y += 64) {
+    ctx.beginPath();
+    ctx.moveTo(8, y + 44);
+    ctx.lineTo(32, y + 14);
+    ctx.lineTo(56, y + 44);
+    ctx.lineTo(56, y + 60);
+    ctx.lineTo(32, y + 30);
+    ctx.lineTo(8, y + 60);
+    ctx.fill();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1, 1.5);
+  return t;
+}
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const randInt = (a, b) => Math.floor(rand(a, b + 1));
@@ -32,6 +58,16 @@ export class Level {
     this.powerModels = powerModels;
     this.powerups = [];
     this.debris = [];
+    this.pads = [];
+    this.padTex = arrowTexture();
+    this.padGeo = new THREE.PlaneGeometry(2.0, 3.2).rotateX(-Math.PI / 2);
+    this.padMat = new THREE.MeshBasicMaterial({
+      map: this.padTex,
+      color: new THREE.Color(0.4, 2.6, 3.4),
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
     this.obstacles = [];
     this.coins = [];
     this.coinPool = [];
@@ -44,6 +80,8 @@ export class Level {
     for (const c of this.coins) this.releaseCoin(c);
     for (const p of this.powerups) this.scene.remove(p.mesh);
     for (const d of this.debris) this.scene.remove(d.mesh);
+    for (const p of this.pads) this.scene.remove(p.mesh);
+    this.pads = [];
     this.obstacles = [];
     this.coins = [];
     this.powerups = [];
@@ -125,11 +163,38 @@ export class Level {
     this.coinPool.push(c.mesh);
   }
 
-  addCoin(x, y, z) {
+  addCoin(x, y, z, fall = 0) {
     const mesh = this.getCoin();
-    mesh.position.set(x, y, z);
+    mesh.position.set(x, y + fall, z);
     mesh.rotation.y = z * 0.35;
-    this.coins.push({ mesh, x, y, z, taken: false, t: 0 });
+    this.coins.push({ mesh, x, y, z, taken: false, t: 0, fall });
+  }
+
+  // 某車道某處的「地面」高度（列車頂、斜坡或路面）
+  surfaceAt(lane, z) {
+    let h = GROUND;
+    for (const o of this.obstacles) {
+      if (o.lane !== lane || (o.kind !== 'train' && o.kind !== 'ramp')) continue;
+      if (z <= o.zFront && z >= o.zFront - o.length) h = Math.max(h, this.heightAt(o, z));
+    }
+    return h;
+  }
+
+  // 金幣雨：三條道路從天而降的金幣
+  addCoinRain(zStart, length) {
+    for (let lane = 0; lane < 3; lane++) {
+      for (let d = 0; d < length; d += 2.6) {
+        const z = zStart - d - lane * 0.8;
+        this.addCoin(LANES[lane], this.surfaceAt(lane, z) + COIN_Y, z, 7 + d * 0.12);
+      }
+    }
+  }
+
+  addPad(lane, z) {
+    const mesh = new THREE.Mesh(this.padGeo, this.padMat);
+    mesh.position.set(LANES[lane], 0.235, z);
+    this.scene.add(mesh);
+    this.pads.push({ mesh, lane, x: LANES[lane], z, used: false });
   }
 
   addCoinLine(lane, zStart, count, spacing = 2.2, yFn = () => GROUND + COIN_Y) {
@@ -205,6 +270,12 @@ export class Level {
       // 片段之間的空檔一定三條道都暢通，道具放這裡
       if (this.chunkIndex > 1 && Math.random() < 0.26) {
         this.addPowerup(this.randomPowerKind(), randInt(0, 2), this.cursor - len - gap / 2);
+      } else if (this.chunkIndex > 1 && Math.random() < 0.22) {
+        // 加速帶，後面接一排金幣
+        const lane = randInt(0, 2);
+        const z = this.cursor - len - 2;
+        this.addPad(lane, z);
+        this.addCoinLine(lane, z - 4, Math.max(2, Math.floor((gap - 8) / 2.2)));
       }
       this.cursor -= len + gap;
       this.chunkIndex++;
@@ -382,7 +453,7 @@ export class Level {
 
     // 懸浮巴士上下浮動
     for (const o of this.obstacles) {
-      if (o.vehicle === 'hoverbus') o.mesh.position.y = Math.sin(time * 2 + o.zFront * 0.1) * 0.08;
+      if (o.vehicle === 'hoverbus' || o.vehicle === 'subs' || o.vehicle === 'airships') o.mesh.position.y = Math.sin(time * 2 + o.zFront * 0.1) * 0.08;
     }
 
     // 回收已經在玩家身後的物件
@@ -405,6 +476,13 @@ export class Level {
     }
     this.powerups = this.powerups.filter((p) => {
       const done = (p.taken && p.t > 0.2) || p.z > playerZ + 12;
+      if (done) this.scene.remove(p.mesh);
+      return !done;
+    });
+
+    this.padTex.offset.y = (this.padTex.offset.y - dt * 1.6) % 1;
+    this.pads = this.pads.filter((p) => {
+      const done = p.z > playerZ + 12;
       if (done) this.scene.remove(p.mesh);
       return !done;
     });
@@ -436,7 +514,8 @@ export class Level {
         c.mesh.rotation.y += dt * 30;
       } else {
         c.mesh.rotation.y += dt * 3.2;
-        c.mesh.position.y = c.y + Math.sin(time * 3 + c.z * 0.4) * 0.06;
+        if (c.fall > 0) c.fall = Math.max(0, c.fall - dt * 16);
+        c.mesh.position.y = c.y + c.fall + Math.sin(time * 3 + c.z * 0.4) * 0.06;
       }
     }
     this.coins = this.coins.filter((c) => {

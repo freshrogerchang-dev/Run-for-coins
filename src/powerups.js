@@ -129,6 +129,61 @@ export class PowerupModels {
     const boxGeo = new THREE.BoxGeometry(0.46, 0.46, 0.46);
     this.icons.mystery = () => new THREE.Mesh(boxGeo, boxMat);
 
+    // 時光沙漏
+    this.icons.slowmo = () => {
+      const g = new THREE.Group();
+      const sand = emissive('#5ec8ff', 0.6);
+      const wood = new THREE.MeshStandardMaterial({ color: '#8a5a36', roughness: 0.6 });
+      const top = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.3, 16), sand);
+      top.position.y = 0.15;
+      top.rotation.x = Math.PI;
+      const bottom = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.3, 16), sand);
+      bottom.position.y = -0.15;
+      g.add(top, bottom);
+      for (const y of [-0.33, 0.33]) {
+        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.06, 16), wood);
+        cap.position.y = y;
+        g.add(cap);
+      }
+      return g;
+    };
+
+    // 金幣雨：雲朵 + 金幣
+    this.icons.coinrain = () => {
+      const g = new THREE.Group();
+      const cloud = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.8 });
+      for (const [x, r] of [[-0.15, 0.17], [0.1, 0.2], [0.28, 0.14]]) {
+        const c = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 10), cloud);
+        c.position.set(x, 0.18, 0);
+        g.add(c);
+      }
+      const gold = emissive('#ffc21a', 0.5);
+      for (const [x, y] of [[-0.18, -0.12], [0.08, -0.25], [0.3, -0.08]]) {
+        const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.03, 16).rotateX(Math.PI / 2), gold);
+        coin.position.set(x, y, 0);
+        g.add(coin);
+      }
+      return g;
+    };
+
+    // 巨人蘑菇
+    this.icons.giant = () => {
+      const g = new THREE.Group();
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.3, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2), emissive('#ff4d3d', 0.4));
+      cap.position.y = 0.02;
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.3, 14), new THREE.MeshStandardMaterial({ color: '#fff4e0', roughness: 0.6 }));
+      stem.position.y = -0.14;
+      g.add(cap, stem);
+      const dot = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.5 });
+      for (let k = 0; k < 5; k++) {
+        const a = (k / 5) * Math.PI * 2;
+        const d = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), dot);
+        d.position.set(Math.cos(a) * 0.2, 0.2, Math.sin(a) * 0.2);
+        g.add(d);
+      }
+      return g;
+    };
+
     // 泡泡外殼（邊緣發光）
     this.bubbleGeo = new THREE.SphereGeometry(0.62, 32, 18);
     this.bubbleMats = {};

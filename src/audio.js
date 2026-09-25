@@ -68,6 +68,42 @@ const MUSIC = {
     bass: 'sawtooth', bassVol: 0.36, lead: 'square', leadVol: 0.05, leadCut: 1600,
     kick: true, snare: true, hat: true, octaveBass: true,
   },
+  underwater: {
+    bpm: 90,
+    prog: [[41, 53, 57, 60], [38, 50, 53, 57], [43, 55, 58, 62], [36, 48, 52, 55]],
+    bass: 'sine', bassVol: 0.5, lead: 'sine', leadVol: 0.12, leadCut: 0,
+    kick: false, snare: false, hat: false, sparse: true, bell: true,
+  },
+  candy: {
+    bpm: 132,
+    prog: [[48, 60, 64, 67], [45, 57, 60, 64], [41, 53, 57, 60], [43, 55, 59, 62]],
+    bass: 'triangle', bassVol: 0.45, lead: 'square', leadVol: 0.06, leadCut: 4000,
+    kick: true, snare: false, hat: true, shaker: true, bell: true,
+  },
+  dino: {
+    bpm: 108,
+    prog: [[38, 50, 53, 57], [41, 53, 57, 60], [36, 48, 52, 55], [43, 55, 58, 62]],
+    bass: 'sawtooth', bassVol: 0.3, lead: 'triangle', leadVol: 0.12, leadCut: 0,
+    kick: true, snare: true, hat: false, sparse: true,
+  },
+  halloween: {
+    bpm: 116,
+    prog: [[45, 57, 60, 63], [44, 56, 59, 62], [41, 53, 56, 60], [40, 52, 55, 59]],
+    bass: 'square', bassVol: 0.25, lead: 'triangle', leadVol: 0.1, leadCut: 0,
+    kick: true, snare: false, hat: true, sparse: true,
+  },
+  skycity: {
+    bpm: 112,
+    prog: [[48, 60, 64, 67], [53, 60, 65, 69], [50, 57, 62, 65], [43, 55, 59, 62]],
+    bass: 'sine', bassVol: 0.5, lead: 'triangle', leadVol: 0.13, leadCut: 0,
+    kick: false, snare: false, hat: true, bell: true,
+  },
+  bamboo: {
+    bpm: 98,
+    prog: [[43, 55, 57, 62], [45, 57, 60, 64], [40, 52, 55, 59], [38, 50, 55, 57]],
+    bass: 'sine', bassVol: 0.45, lead: 'triangle', leadVol: 0.14, leadCut: 0,
+    kick: false, snare: false, hat: false, sparse: true, shaker: true,
+  },
   space: {
     bpm: 122,
     prog: [[45, 57, 64, 69], [41, 57, 60, 65], [43, 55, 62, 67], [40, 52, 59, 64]],
@@ -260,6 +296,10 @@ export class Sfx {
         this.burst(0.09, { vol: 0.1, freq: rand(2500, 3500), q: 0.7, attack: 0.01 });
         this.tone(85, 0.05, { vol: 0.06, slide: -35 });
         break;
+      case 'wood':
+        this.tone(rand(180, 240), 0.08, { type: 'triangle', vol: 0.1, slide: -60 });
+        this.burst(0.05, { vol: 0.06, freq: 1400, q: 1.2 });
+        break;
       case 'wet':
         this.burst(0.07, { vol: 0.07, freq: rand(3000, 4000), q: 2.5 });
         this.tone(90, 0.05, { vol: 0.08, slide: -40 });
@@ -337,6 +377,29 @@ export class Sfx {
         break;
       case 'rovers':
         [1760, 1320, 1760, 2093].forEach((f, i) => this.tone(f, 0.1, { type: 'square', vol: 0.03, delay: i * 0.12 }));
+        break;
+      case 'subs':
+        // 聲納 ping
+        this.tone(1400, 1.4, { vol: 0.07, dest: this.sfxBus });
+        this.tone(1400, 1.0, { vol: 0.03, delay: 0.6, dest: this.sfxBus });
+        break;
+      case 'icecream':
+        [76, 79, 84, 79, 81, 77].forEach((m, i) => this.tone(mtof(m), 0.16, { type: 'triangle', vol: 0.08, delay: i * 0.14 }));
+        break;
+      case 'dinos':
+        this.tone(160, 1.3, { type: 'sawtooth', vol: 0.1, slide: -80, cut: 900, attack: 0.08 });
+        this.burst(1.2, { vol: 0.25, freq: 350, q: 0.6, type: 'lowpass', attack: 0.08 });
+        break;
+      case 'pumpkins':
+        // 巫婆笑聲
+        for (let i = 0; i < 5; i++) this.tone(900 - i * 40, 0.12, { type: 'sawtooth', vol: 0.04, slide: 200, delay: i * 0.13, cut: 3000 });
+        break;
+      case 'airships':
+        this.tone(220, 1.2, { type: 'square', vol: 0.05, cut: 800, attack: 0.1 });
+        this.tone(330, 1.2, { type: 'square', vol: 0.03, cut: 800, attack: 0.1 });
+        break;
+      case 'pandas':
+        for (let i = 0; i < 2; i++) this.tone(700, 0.15, { type: 'triangle', vol: 0.06, slide: 300, delay: i * 0.22 });
         break;
       default:
         this.horn();
@@ -424,6 +487,37 @@ export class Sfx {
   revive() {
     [60, 67, 72, 79].forEach((m, i) => this.tone(mtof(m), 0.25, { type: 'triangle', vol: 0.12, delay: i * 0.08 }));
     this.burst(0.6, { vol: 0.12, freq: 600, q: 0.6, sweep: 4000 });
+  }
+
+  // ---------- 新道具 ----------
+  slowmo() {
+    this.tone(880, 1.0, { type: 'sine', vol: 0.1, slide: -660, attack: 0.05 });
+    this.burst(0.9, { vol: 0.12, freq: 3000, q: 1, sweep: -2600, attack: 0.1 });
+  }
+
+  coinRain() {
+    for (let i = 0; i < 10; i++) this.tone(mtof(84 + ((i * 7) % 12)), 0.12, { type: 'square', vol: 0.04, delay: i * 0.05 });
+    this.sparkle(0.5);
+  }
+
+  giant() {
+    this.tone(60, 1.0, { type: 'sawtooth', vol: 0.15, slide: 120, cut: 800, attack: 0.05 });
+    [48, 55, 60, 67].forEach((m, i) => this.tone(mtof(m), 0.25, { type: 'square', vol: 0.06, delay: 0.1 + i * 0.1, cut: 2000 }));
+  }
+
+  giantStomp() {
+    this.tone(55, 0.5, { vol: 0.5, slide: -25 });
+    this.burst(0.5, { vol: 0.4, freq: 180, q: 0.6, type: 'lowpass' });
+  }
+
+  boost() {
+    this.tone(300, 0.35, { type: 'sawtooth', vol: 0.06, slide: 1200, cut: 4000 });
+    this.burst(0.4, { vol: 0.2, freq: 600, q: 1, sweep: 4000 });
+  }
+
+  combo(n) {
+    const base = 72 + Math.min(12, Math.floor(n / 10) * 2);
+    [0, 4, 7, 12].forEach((d, i) => this.tone(mtof(base + d), 0.12, { type: 'square', vol: 0.05, delay: i * 0.05, cut: 5000 }));
   }
 
   // ---------- 天氣 ----------
@@ -558,7 +652,7 @@ export class Sfx {
     this.theme = id;
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
-    const wet = { city: 0.08, seaside: 0.05, tunnel: 0.55, snow: 0.14, neon: 0.2, desert: 0.12, sakura: 0.18, jungle: 0.12, volcano: 0.22, space: 0.35 }[id] ?? 0.1;
+    const wet = { city: 0.08, seaside: 0.05, tunnel: 0.55, snow: 0.14, neon: 0.2, desert: 0.12, sakura: 0.18, jungle: 0.12, volcano: 0.22, space: 0.35, underwater: 0.6, candy: 0.1, dino: 0.15, halloween: 0.35, skycity: 0.12, bamboo: 0.2 }[id] ?? 0.1;
     this.reverbSend.gain.setTargetAtTime(wet, t, instant ? 0.01 : 0.8);
     this.nextStyle = MUSIC[id] || MUSIC.city;
     if (instant) this.style = this.nextStyle;
@@ -646,6 +740,35 @@ export class Sfx {
         const rumble = noiseLayer('lowpass', 90, 0.8, 0.22);
         lfo(0.15, 0.1, rumble.g.gain);
         noiseLayer('bandpass', 700, 0.8, 0.02);
+        break;
+      }
+      case 'underwater': {
+        const deep = noiseLayer('lowpass', 220, 0.8, 0.14);
+        lfo(0.1, 0.06, deep.g.gain);
+        break;
+      }
+      case 'candy':
+        noiseLayer('bandpass', 1200, 0.6, 0.015);
+        break;
+      case 'dino': {
+        const bugs = noiseLayer('bandpass', 4200, 5, 0.03);
+        lfo(18, 0.025, bugs.g.gain);
+        noiseLayer('lowpass', 400, 0.5, 0.03);
+        break;
+      }
+      case 'halloween': {
+        const wind = noiseLayer('bandpass', 500, 5, 0.07);
+        lfo(0.09, 250, wind.f.frequency);
+        break;
+      }
+      case 'skycity': {
+        const wind = noiseLayer('bandpass', 900, 0.7, 0.05);
+        lfo(0.12, 0.04, wind.g.gain);
+        break;
+      }
+      case 'bamboo': {
+        const rustle = noiseLayer('highpass', 3000, 0.5, 0.02);
+        lfo(0.2, 0.015, rustle.g.gain);
         break;
       }
       case 'space': {
@@ -746,6 +869,42 @@ export class Sfx {
           this.tone(45, 1.2, { vol: 0.25, slide: -15, dest: amb });
         }
         return rand(2, 5);
+      case 'underwater':
+        // 氣泡聲、鯨魚歌聲
+        if (Math.random() < 0.7) {
+          for (let i = 0; i < 4; i++) this.tone(rand(500, 900), 0.08, { vol: 0.04, slide: 400, delay: i * rand(0.06, 0.15), dest: amb });
+        } else {
+          this.tone(260, 2.2, { type: 'sine', vol: 0.05, slide: 180, dest: this.sfxBus, attack: 0.4 });
+        }
+        return rand(2, 5);
+      case 'candy':
+        [84, 88, 91, 96].forEach((m, i) => this.tone(mtof(m), 0.2, { type: 'triangle', vol: 0.03, delay: i * 0.08, dest: amb }));
+        return rand(5, 9);
+      case 'dino':
+        if (Math.random() < 0.5) {
+          this.tone(120, 1.4, { type: 'sawtooth', vol: 0.05, slide: -50, cut: 700, dest: amb, attack: 0.2 });
+          this.burst(1.2, { vol: 0.08, freq: 300, q: 0.7, type: 'lowpass', dest: amb, attack: 0.2 });
+        } else {
+          this.tone(1800, 0.4, { type: 'sawtooth', vol: 0.02, slide: -700, cut: 3000, dest: amb });
+        }
+        return rand(4, 9);
+      case 'halloween':
+        if (Math.random() < 0.5) {
+          // 貓頭鷹
+          this.tone(420, 0.3, { vol: 0.05, slide: -40, dest: amb, attack: 0.05 });
+          this.tone(400, 0.5, { vol: 0.05, slide: -60, delay: 0.4, dest: amb, attack: 0.05 });
+        } else {
+          // 幽靈嗚嗚聲
+          this.tone(600, 2, { type: 'sine', vol: 0.03, slide: -250, dest: this.sfxBus, attack: 0.5 });
+        }
+        return rand(5, 9);
+      case 'skycity':
+        [79, 83, 86].forEach((m, i) => this.tone(mtof(m), 1.5, { vol: 0.02, delay: i * 0.2, dest: amb }));
+        return rand(6, 10);
+      case 'bamboo':
+        // 竹子互相敲擊
+        for (let i = 0; i < 3; i++) this.tone(rand(700, 1100), 0.08, { type: 'triangle', vol: 0.05, delay: i * rand(0.1, 0.25), dest: amb });
+        return rand(3, 7);
       case 'space': {
         // 通訊嗶嗶聲
         const n = 2 + ((Math.random() * 4) | 0);

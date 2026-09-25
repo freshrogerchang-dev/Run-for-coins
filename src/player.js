@@ -29,6 +29,7 @@ export class Player {
     this.root = new THREE.Group();
     this.phase = 0;
     this.pose = { jump: 0, slide: 0, crash: 0, idle: 1 };
+    this.baseScale = 1;
     this.fx = { jetpack: false, spring: false, shield: false, magnet: false, board: false };
     this.build();
     this.buildPowerVisuals();
@@ -193,6 +194,42 @@ export class Player {
       part(new THREE.SphereGeometry(0.02, 8, 6), m.gem, hats.crown, { x: Math.cos(a) * 0.175, y: 0.42, z: Math.sin(a) * 0.175 });
     }
 
+    // 潛水面鏡 + 呼吸管
+    hats.mask = g();
+    part(new THREE.TorusGeometry(0.197, 0.025, 6, 24), m.dark, hats.mask, { y: 0.22, rx: Math.PI / 2 });
+    part(new RoundedBoxGeometry(0.3, 0.14, 0.06, 2, 0.03), m.glass, hats.mask, { y: 0.21, z: -0.18 });
+    part(new RoundedBoxGeometry(0.32, 0.16, 0.04, 2, 0.03), m.hat, hats.mask, { y: 0.21, z: -0.16 });
+    part(new THREE.CylinderGeometry(0.025, 0.025, 0.4, 8), m.hat, hats.mask, { x: 0.2, y: 0.3, z: -0.05 });
+    // 廚師帽
+    hats.chef = g();
+    part(new THREE.CylinderGeometry(0.19, 0.2, 0.24, 20), m.hat, hats.chef, { y: 0.4 });
+    part(new THREE.SphereGeometry(0.25, 16, 12), m.hat, hats.chef, { y: 0.58, sy: 0.7 });
+    part(new THREE.TorusGeometry(0.2, 0.02, 6, 20), m.trim, hats.chef, { y: 0.3, rx: Math.PI / 2 });
+    // 恐龍帽 T
+    hats.dinohood = g();
+    part(hemi(0.235), m.hat, hats.dinohood, { y: 0.21, sy: 1.05 });
+    for (let k = 0; k < 4; k++) {
+      part(new THREE.ConeGeometry(0.05, 0.12, 5), m.trim, hats.dinohood, { y: 0.45 - Math.abs(k - 1.5) * 0.03, z: -0.12 + k * 0.1 });
+    }
+    for (const x of [-0.08, 0.08]) part(new THREE.SphereGeometry(0.05, 10, 8), m.hat, hats.dinohood, { x, y: 0.42, z: -0.14 });
+    // 巫師帽
+    hats.witch = g();
+    part(new THREE.CylinderGeometry(0.38, 0.38, 0.025, 28), m.hat, hats.witch, { y: 0.3 });
+    part(new THREE.ConeGeometry(0.2, 0.55, 18), m.hat, hats.witch, { y: 0.58, rz: 0.15 });
+    part(new THREE.CylinderGeometry(0.2, 0.2, 0.05, 18), m.trim, hats.witch, { y: 0.33 });
+    // 飛行帽 + 護目鏡
+    hats.aviator = g();
+    part(hemi(0.215), m.hat, hats.aviator, { y: 0.22 });
+    for (const x of [-0.19, 0.19]) part(new RoundedBoxGeometry(0.06, 0.2, 0.14, 2, 0.02), m.hat, hats.aviator, { x, y: 0.14 });
+    for (const x of [-0.07, 0.07]) {
+      part(new THREE.TorusGeometry(0.055, 0.018, 6, 16), m.gold, hats.aviator, { x, y: 0.34, z: -0.17, rx: -0.4 });
+      part(new THREE.CircleGeometry(0.05, 14), m.glass, hats.aviator, { x, y: 0.34, z: -0.165, rx: -0.4 });
+    }
+    // 熊貓帽 T
+    hats.pandahood = g();
+    part(hemi(0.225), m.hat, hats.pandahood, { y: 0.22 });
+    for (const x of [-0.16, 0.16]) part(new THREE.SphereGeometry(0.075, 12, 10), m.trim, hats.pandahood, { x, y: 0.42, z: 0.02 });
+
     hats.none = g();
     part(new THREE.SphereGeometry(0.205, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.4), m.hair, hats.none, { y: 0.23, sy: 1.25 });
     this.hats = hats;
@@ -262,7 +299,8 @@ export class Player {
     this.mats.skin.color.set(skin);
     this.mats.skin.metalness = id === 'robot' ? 0.85 : 0;
     this.mats.skin.roughness = id === 'robot' ? 0.3 : 0.6;
-    this.root.scale.setScalar(id === 'girl' ? 0.95 : id === 'robot' ? 1.04 : 1);
+    this.baseScale = id === 'girl' ? 0.95 : id === 'robot' ? 1.04 : 1;
+    this.root.scale.setScalar(this.baseScale);
     this.hatRoot.position.y = id === 'robot' ? 0.07 : id === 'fox' ? 0.02 : 0;
   }
 

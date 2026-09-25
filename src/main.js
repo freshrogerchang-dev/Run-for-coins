@@ -9,6 +9,7 @@ import { Sfx } from './audio.js';
 import { THEMES, THEME_ORDER } from './themes.js';
 import { PowerupModels } from './powerups.js';
 import { Chaser } from './chaser.js';
+import { PETS, ownedPets, activePet, PetFollower } from './pets.js';
 import {
   Meta,
   CHARACTERS,
@@ -91,13 +92,20 @@ let charId = ownedCharacters().includes(store.get('char', 'kid')) ? store.get('c
 player.applyCharacter(CHARACTERS.find((c) => c.id === charId));
 const meta = new Meta();
 const chaser = new Chaser(stage.scene);
+const pet = new PetFollower(stage.scene);
+pet.set(activePet());
 const NO_RAIN = ['tunnel', 'space', 'snow', 'volcano'];
 
 const JUMP_V = Math.sqrt(2 * GRAVITY * JUMP_HEIGHT);
 const JUMP_V_SPRING = Math.sqrt(2 * GRAVITY * 4.6);
 const DASH_MULT = 1.65;
 const JET_Y = 8.2;
-const POWER_KEYS = ['dash', 'jetpack', 'magnet', 'double', 'spring', 'shield'];
+const POWER_KEYS = ['dash', 'jetpack', 'magnet', 'double', 'spring', 'shield', 'slowmo', 'giant'];
+const SLOW_MULT = 0.62;
+const GIANT_MULT = 1.2;
+// 目前所有道具加總的奔跑速度倍率
+const speedMult = () =>
+  (S.power.dash > 0 ? DASH_MULT : 1) * (S.power.slowmo > 0 ? SLOW_MULT : 1) * (S.power.giant > 0 ? GIANT_MULT : 1);
 const emptyPower = () => Object.fromEntries(POWER_KEYS.map((k) => [k, 0]));
 
 const S = {
@@ -172,6 +180,8 @@ function resetRun() {
     vaulting: 0,
     crashCause: null,
     board: 0,
+    combo: 0,
+    lastCoinT: -10,
     storming: 0,
     weatherT: 14,
     lightningT: 5,
@@ -300,7 +310,15 @@ function activatePower(kind) {
     openMystery();
     return;
   }
-  const dur = powerDuration(kind);
+  if (kind === 'coinrain') {
+    level.addCoinRain(S.z - 12, 90);
+    sfx.powerup('mystery');
+    sfx.coinRain();
+    flash('金幣雨！');
+    return;
+  }
+  // 小貓寵物：磁鐵、雙倍金幣多 3 秒
+  const dur = powerDuration(kind) + (activePet() === 'kitten' && (kind === 'magnet' || kind === 'double') ? 3 : 0);
   S.power[kind] = dur;
   S.powerMax[kind] = dur;
   sfx.powerup(kind);
@@ -309,9 +327,14 @@ function activatePower(kind) {
     sfx.dash();
     S.shake = Math.max(S.shake, 0.2);
   }
+  if (kind === 'giant') {
+    sfx.giant();
+    S.shake = Math.max(S.shake, 0.4);
+  }
+  if (kind === 'slowmo') sfx.slowmo();
   if (kind === 'jetpack') {
     S.slideT = 0;
-    const run = S.speed * (S.power.dash > 0 ? DASH_MULT : 1);
+    const run = S.speed * speedMult();
     level.addSkyCoins(S.z - 14, Math.floor((run * dur) / 2.4) - 4, JET_Y + 0.85);
     sfx.setJet(true);
   }
@@ -328,7 +351,7 @@ function openMystery() {
     flash(`神秘寶箱：+${n} 金幣`);
     bumpCoinHud();
   } else if (r < 0.85) {
-    const kinds = POWER_KEYS;
+    const kinds = [...POWER_KEYS, 'coinrain'];
     const k = kinds[(Math.random() * kinds.length) | 0];
     flash(`神秘寶箱：${POWERUPS[k].name}`);
     setTimeout(() => S.mode === 'playing' && activatePower(k), 350);
@@ -379,6 +402,16 @@ function tickPowers(dt) {
 
 // 受保護時撞到東西：柵欄被撞飛；列車或斜坡則翻上車頂
 function smashOrVault(o) {
+  // 巨人：連列車和斜坡都一起撞飛
+  if (S.power.giant > 0 && !o.decorative) {
+    level.knock(o, Math.sign(o.x - S.x) || (Math.random() < 0.5 ? -1 : 1));
+    sfx.smash();
+    sfx.giantStomp();
+    meta.track('giantSmash');
+    stage.burst(new THREE.Vector3(o.x, 2, o.zFront), 24);
+    S.shake = Math.max(S.shake, 0.35);
+    return;
+  }
   if (o.kind === 'low' || o.kind === 'high') {
     level.knock(o, Math.sign(o.x - S.x) || (Math.random() < 0.5 ? -1 : 1));
     sfx.smash();
@@ -396,7 +429,7 @@ function smashOrVault(o) {
 
 // 撞擊處理：回傳 true 表示這一步要停止（撞車或側撞）
 function hit(o, side, prevX) {
-  if (S.power.dash > 0 || S.invuln > 0 || S.vaulting > 0) {
+  if (S.power.dash > 0 || S.power.giant > 0 || S.invuln > 0 || S.vaulting > 0) {
     smashOrVault(o);
     return false;
   }
@@ -434,11 +467,27 @@ function collectCoin(c) {
   c.taken = true;
   c.magnet = false;
   const n = S.power.double > 0 ? 2 : 1;
+  const before = S.coins;
   S.coins += n;
   meta.track('coins', n);
   sfx.coin();
   stage.burst(c.mesh.position, 9);
   bumpCoinHud();
+  // 連擊：0.6 秒內連續吃到金幣
+  S.combo = S.runTime - S.lastCoinT < 0.6 ? S.combo + 1 : 1;
+  S.lastCoinT = S.runTime;
+  if (S.combo % 5 === 0) meta.track('combo', 0, S.combo);
+  if (S.combo % 10 === 0) {
+    const bonus = S.combo * 5;
+    S.bonus += bonus;
+    showCombo(`連擊 ×${S.combo}　+${bonus} 分`, true);
+    sfx.combo(S.combo);
+  }
+  // 貓頭鷹寵物：每 50 枚金幣多送 5 枚
+  if (activePet() === 'owl' && Math.floor(S.coins / 50) > Math.floor(before / 50)) {
+    S.coins += 5;
+    flash('貓頭鷹博士：+5 金幣');
+  }
 }
 
 function sideBump(prevX) {
@@ -466,7 +515,7 @@ function stepPlaying(dt) {
 
   tickPowers(dt);
   S.vaulting = Math.max(0, (S.vaulting || 0) - dt);
-  const runSpeed = S.speed * (S.power.dash > 0 ? DASH_MULT : 1);
+  const runSpeed = S.speed * speedMult();
   S.z -= runSpeed * dt;
   S.distance += runSpeed * dt;
   S.distAcc += runSpeed * dt;
@@ -558,7 +607,7 @@ function stepPlaying(dt) {
     }
     if (Math.abs(c.mesh.position.x - S.x) > 0.95) continue;
     if (c.z < zMin - 0.6 || c.z > zMax + 0.6) continue;
-    if (c.y < S.y - 0.4 || c.y > S.y + h + 0.6) continue;
+    if (c.y < S.y - 0.4 || c.y > S.y + h + 0.6 || c.fall > 1) continue;
     collectCoin(c);
   }
 
@@ -572,6 +621,20 @@ function stepPlaying(dt) {
     stage.burst(pu.mesh.position, 20);
     activatePower(pu.kind);
     meta.track('powerups');
+  }
+
+  // 加速帶：踩上去短暫衝刺
+  for (const pad of level.pads) {
+    if (pad.used || Math.abs(pad.x - S.x) > 1.1) continue;
+    if (pad.z > zMax + 1.6 || pad.z < zMin - 1.6) continue;
+    if (S.y > (S.floorY ?? GROUND) + 0.6) continue;
+    pad.used = true;
+    const t = Math.max(S.power.dash, 1.6);
+    S.power.dash = t;
+    S.powerMax.dash = Math.max(S.powerMax.dash, t);
+    sfx.boost();
+    flash('加速！');
+    meta.track('boosts');
   }
 
   // 關卡目標
@@ -654,7 +717,7 @@ function updateTrainAudio(dt) {
     S.clackT -= dt;
     if (S.clackT <= 0) {
       if (vehicleNear === 'train') sfx.clack();
-      else if (['camels', 'elephants', 'tortoises'].includes(vehicleNear)) sfx.step('sand');
+      else if (['camels', 'elephants', 'tortoises', 'dinos', 'pandas'].includes(vehicleNear)) sfx.step('sand');
       S.clackT = 0.5 - p * 0.25;
     }
   }
@@ -677,7 +740,9 @@ function updateCamera(dt) {
   const floorY = S.mode === 'menu' ? GROUND : Math.min(TRAIN_TOP, S.floorY ?? GROUND);
   const camTarget = S.power.jetpack > 0 || S.y > TRAIN_TOP + 2.2 ? S.y + 3.3 : 3.7 + (floorY - GROUND) + Math.max(0, S.y - floorY) * 0.5;
   S.camY = damp(S.camY, camTarget, 5, dt);
-  followPos.set(S.x * 0.7, S.camY, S.z + 7.2);
+  // 巨人時鏡頭拉遠
+  S.camPull = damp(S.camPull || 0, S.power.giant > 0 && S.mode === 'playing' ? 1 : 0, 3, dt);
+  followPos.set(S.x * 0.7, S.camY + S.camPull * 2.2, S.z + 7.2 + S.camPull * 4);
   followLook.set(S.x * 0.85, S.camY - 2.0, S.z - 9);
 
   const target = S.mode === 'menu' ? 0 : 1;
@@ -696,7 +761,7 @@ function updateCamera(dt) {
   stage.camera.lookAt(camLook);
   const baseFov = stage.camera.aspect < 0.8 ? 75 : 62;
   const sf = (S.speed - START_SPEED) / (MAX_SPEED - START_SPEED);
-  const dashFov = S.power.dash > 0 && S.mode === 'playing' ? 12 : 0;
+  const dashFov = S.mode !== 'playing' ? 0 : (S.power.dash > 0 ? 12 : 0) - (S.power.slowmo > 0 ? 6 : 0);
   stage.camera.fov = damp(stage.camera.fov, baseFov + (S.mode === 'playing' ? sf * 9 : 0) + dashFov, 3, dt);
   stage.camera.updateProjectionMatrix();
 }
@@ -759,7 +824,21 @@ boardEl.innerHTML = '<b>板</b><span><em>滑板</em><i></i></span>';
 ui.powers.appendChild(boardEl);
 const boardBar = boardEl.querySelector('i');
 
+let comboTimer;
+function showCombo(text, big = false) {
+  const el = $('combo');
+  el.textContent = text;
+  el.hidden = false;
+  el.classList.toggle('big', big);
+  el.classList.remove('pop');
+  void el.offsetWidth;
+  el.classList.add('pop');
+  clearTimeout(comboTimer);
+  comboTimer = setTimeout(() => (el.hidden = true), big ? 1400 : 900);
+}
+
 function updateHud() {
+  if (S.combo >= 5 && S.runTime - S.lastCoinT < 0.1 && S.combo % 10) showCombo(`連擊 ×${S.combo}`);
   const onBoard = S.board > 0;
   if (boardEl.hidden === onBoard) boardEl.hidden = !onBoard;
   if (onBoard) {
@@ -953,6 +1032,17 @@ function renderPanel() {
         <strong>${c.name}</strong><span>${c.desc}</span>
         <small>${active ? '使用中' : has ? '選擇' : `${c.price.toLocaleString()} 金幣解鎖`}</small>
       </button>`;
+    }).join('')}</div>
+    <h3 class="panel-sub">寵物</h3>
+    <p class="panel-hint">寵物會跟著你跑，每隻都有一個小能力。再點一次正在用的寵物可以讓牠休息。</p>
+    <div class="char-grid">${PETS.map((p) => {
+      const has = ownedPets().includes(p.id);
+      const active = p.id === activePet();
+      return `<button type="button" class="char ${has ? '' : 'locked'}" aria-pressed="${active}" data-pet="${p.id}">
+        <i class="pet-face pet-${p.id}" aria-hidden="true"></i>
+        <strong>${p.name}</strong><span>${p.perk}</span>
+        <small>${active ? '跟著你中' : has ? '帶牠出門' : `${p.price.toLocaleString()} 金幣`}</small>
+      </button>`;
     }).join('')}</div>`;
   } else if (panelTab === 'wardrobe') {
     body.innerHTML = `<p class="panel-hint">破關解鎖新服裝，點一下就能換上。</p><div class="outfit-grid">${OUTFITS.map((o) => {
@@ -1024,6 +1114,30 @@ ui.panel.addEventListener('click', (e) => {
     closePanel();
   } else if (t.dataset.char) {
     buyCharacter(t.dataset.char);
+  } else if (t.dataset.pet) {
+    const id = t.dataset.pet;
+    const p = PETS.find((x) => x.id === id);
+    const owned = ownedPets();
+    if (!owned.includes(id)) {
+      const bank = store.get('bank', 0);
+      if (bank < p.price) {
+        sfx.denied();
+        flash(`還差 ${(p.price - bank).toLocaleString()} 金幣`);
+        return;
+      }
+      store.set('bank', bank - p.price);
+      store.set('pets', [...owned, id]);
+      sfx.buy();
+      store.set('pet', id);
+      meta.checkAchievements();
+      meta.flush();
+    } else {
+      sfx.click();
+      store.set('pet', activePet() === id ? null : id);
+    }
+    pet.set(activePet());
+    renderPanel();
+    refreshMenuStats();
   } else if (t.dataset.board) {
     const bank = store.get('bank', 0);
     if (bank < BOARD_PRICE) {
@@ -1121,6 +1235,16 @@ function startGame() {
   setTimeout(() => sfx.bark(), 500);
   chaser.reset();
   meta.track('runs');
+  // 寵物能力
+  const petId = activePet();
+  if (petId === 'puppy') {
+    S.power.shield = S.powerMax.shield = 12;
+    syncPowerVisuals();
+  }
+  if (petId === 'dragon') {
+    S.power.dash = S.powerMax.dash = 3;
+    setTimeout(() => sfx.dash(), 300);
+  }
   closePanel();
   updateHud();
   updateBoardBtn();
@@ -1370,6 +1494,9 @@ function frame() {
 
 function present(dt) {
   player.root.position.set(S.x, S.y, S.z);
+  S.giantScale = damp(S.giantScale || 1, S.power.giant > 0 && S.mode !== 'menu' ? 1.9 : 1, 6, dt);
+  player.root.scale.setScalar(player.baseScale * S.giantScale);
+  pet.update(dt, S, S.mode === 'menu');
   player.animate(dt, {
     speed: S.speed,
     grounded: S.grounded,
@@ -1397,7 +1524,7 @@ function present(dt) {
   const dashing = S.power.dash > 0 && S.mode === 'playing';
   const sf = S.mode === 'playing' ? (S.speed - START_SPEED) / (MAX_SPEED - START_SPEED) + (dashing ? 0.9 : 0) : 0;
   sfx.setSpeed(Math.min(1.4, sf), S.mode === 'playing');
-  stage.runSpeed = S.mode === 'playing' ? S.speed * (dashing ? DASH_MULT : 1) : 0;
+  stage.runSpeed = S.mode === 'playing' ? S.speed * speedMult() : 0;
   stage.update(dt, { z: S.z }, sf, S.time);
   stage.render();
 

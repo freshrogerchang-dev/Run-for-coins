@@ -938,6 +938,10 @@ export function roadTexture(style) {
     mud: '#6b5a3c',
     basalt: '#2e2826',
     metal: '#7c828c',
+    seabed: '#d6c49a',
+    candy: '#e79cbf',
+    graveyard: '#3b3640',
+    planks: '#9a6b42',
   }[style];
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, W, H);
@@ -1052,6 +1056,72 @@ export function roadTexture(style) {
         }
         ctx.stroke();
         ectx.stroke();
+      }
+      break;
+    case 'seabed':
+      // 沙紋 + 貝殼
+      ctx.strokeStyle = 'rgba(150,125,85,0.35)';
+      ctx.lineWidth = 3;
+      for (let y = 0; y < H; y += 12) {
+        ctx.beginPath();
+        for (let x = 0; x <= W; x += 8) ctx.lineTo(x, y + Math.sin(x * 0.06 + y) * 3);
+        ctx.stroke();
+      }
+      for (let i = 0; i < 14; i++) {
+        ctx.fillStyle = pick(['#fff1e0', '#ffc9b5', '#f5e6c8']);
+        ctx.beginPath();
+        ctx.ellipse(Math.random() * W, Math.random() * H, 5, 4, Math.random() * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    case 'candy':
+      // 威化餅乾格紋 + 彩色糖粒
+      ctx.strokeStyle = 'rgba(200,110,150,0.6)';
+      ctx.lineWidth = 3;
+      for (let k = -W; k < W * 2; k += 24) {
+        ctx.beginPath();
+        ctx.moveTo(k, 0);
+        ctx.lineTo(k + H, H);
+        ctx.moveTo(k, H);
+        ctx.lineTo(k + H, 0);
+        ctx.stroke();
+      }
+      for (let i = 0; i < 120; i++) {
+        ctx.fillStyle = pick(['#ff4d6d', '#ffd23f', '#3dd6ff', '#7dff6a', '#ffffff', '#9b5cff']);
+        ctx.save();
+        ctx.translate(Math.random() * W, Math.random() * H);
+        ctx.rotate(Math.random() * 3);
+        ctx.fillRect(-4, -1.5, 8, 3);
+        ctx.restore();
+      }
+      break;
+    case 'graveyard':
+      for (let y = 0; y < H; y += 26) {
+        const off = (y / 26) % 2 ? 13 : 0;
+        for (let x = -26; x < W; x += 26) {
+          const v = 45 + Math.random() * 20;
+          ctx.fillStyle = `rgb(${v},${v - 4},${v + 6})`;
+          ctx.beginPath();
+          ctx.ellipse(x + off + 13, y + 13, 11, 10, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      for (let i = 0; i < 40; i++) {
+        ctx.fillStyle = 'rgba(80,120,60,0.5)';
+        ctx.fillRect(Math.random() * W, Math.random() * H, 3, 6);
+      }
+      break;
+    case 'planks':
+      for (let y = 0; y < H; y += 21) {
+        const v = 130 + Math.random() * 30;
+        ctx.fillStyle = `rgb(${v},${v * 0.68},${v * 0.42})`;
+        ctx.fillRect(0, y + 1, W, 19);
+        ctx.fillStyle = 'rgba(40,25,10,0.5)';
+        ctx.fillRect(0, y, W, 2);
+        for (const m of [-3.9, 3.9]) {
+          ctx.fillStyle = '#3a2a1a';
+          ctx.fillRect(xOf(m) - 3, y + 8, 6, 5);
+        }
       }
       break;
     case 'metal':
