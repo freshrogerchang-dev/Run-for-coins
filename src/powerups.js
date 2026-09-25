@@ -148,7 +148,7 @@ export class PowerupModels {
         fragmentShader: /* glsl */ `
           uniform vec3 uColor; varying vec3 vN; varying vec3 vV;
           void main() {
-            float f = pow(1.0 - abs(dot(vN, vV)), 2.2);
+            float f = pow(clamp(1.0 - abs(dot(normalize(vN), normalize(vV))), 0.0, 1.0), 2.2);
             gl_FragColor = vec4(uColor * (f + 0.08), f * 0.95 + 0.06);
           }`,
       });

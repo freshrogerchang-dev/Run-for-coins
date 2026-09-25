@@ -5,6 +5,24 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+
+// 保險：把 NaN / 無限大的像素清掉，避免 Bloom 把它們擴散成閃爍的黑色方塊（iPad / iPhone 特別容易出現）
+const SanitizeShader = {
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    varying vec2 vUv;
+    bool bad(float v) { return !(v == v) || abs(v) > 60000.0; }
+    void main() {
+      vec4 c = texture2D(tDiffuse, vUv);
+      if (bad(c.r) || bad(c.g) || bad(c.b) || bad(c.a)) c = vec4(0.0, 0.0, 0.0, 1.0);
+      gl_FragColor = vec4(clamp(c.rgb, 0.0, 64.0), clamp(c.a, 0.0, 1.0));
+    }`,
+};
 
 import { THEMES } from './themes.js';
 
@@ -203,6 +221,7 @@ export class Stage {
     composer.setPixelRatio(this.renderer.getPixelRatio());
     composer.setSize(size.x, size.y);
     composer.addPass(new RenderPass(this.scene, this.camera));
+    composer.addPass(new ShaderPass(SanitizeShader));
     this.bloom = new UnrealBloomPass(size.clone().multiplyScalar(0.5), 0.45, 0.55, 0.92);
     composer.addPass(this.bloom);
     composer.addPass(new OutputPass());
@@ -226,7 +245,7 @@ export class Stage {
         void main() {
           vA = alpha;
           vec4 mv = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = (0.12 + alpha * 0.18) * uScale / -mv.z;
+          gl_PointSize = clamp((0.12 + alpha * 0.18) * uScale / max(-mv.z, 0.5), 0.0, 128.0);
           gl_Position = projectionMatrix * mv;
         }
       `,

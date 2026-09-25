@@ -340,7 +340,7 @@ export class Player {
         uniform float uTime; uniform vec3 uColor;
         varying vec3 vN; varying vec3 vV; varying vec3 vP;
         void main() {
-          float f = pow(1.0 - abs(dot(vN, vV)), 2.5);
+          float f = pow(clamp(1.0 - abs(dot(normalize(vN), normalize(vV))), 0.0, 1.0), 2.5);
           float bands = 0.5 + 0.5 * sin(vP.y * 18.0 - uTime * 4.0);
           gl_FragColor = vec4(uColor * (f * 1.2 + bands * 0.08), f * 0.9 + 0.05);
         }`,
