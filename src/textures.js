@@ -137,7 +137,7 @@ export function wallTexture() {
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(rand(-0.12, 0.12));
-    ctx.font = `900 ${Math.round(rand(88, 112))}px "Bungee", Impact, "Arial Black", sans-serif`;
+    ctx.font = `900 ${Math.round(rand(88, 112))}px "Fredoka", Impact, "Arial Black", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineJoin = 'round';
@@ -389,7 +389,7 @@ export function liverySideTexture(l) {
   ctx.fillRect(0, H - 22, W, 22);
   // 編號
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
-  ctx.font = 'bold 22px "Bungee", "Arial Black", sans-serif';
+  ctx.font = 'bold 22px "Fredoka", "Arial Black", sans-serif';
   ctx.fillText(l.code, 40, 212);
   ctx.fillText('RUN FOR COINS METRO', W - 330, 212);
   // 下方灰塵
@@ -418,7 +418,7 @@ export function liveryFrontTexture(l) {
   roundRect(ctx, 38, 14, W - 76, 34, 6);
   ctx.fillStyle = '#0b0b0b';
   ctx.fill();
-  ctx.font = 'bold 22px "Bungee", "Arial Black", sans-serif';
+  ctx.font = 'bold 22px "Fredoka", "Arial Black", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ff9d1c';
@@ -522,11 +522,11 @@ export function signTexture(text, sub) {
   ctx.fillRect(0, 0, 512, 128);
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 100, 512, 6);
-  ctx.font = '900 54px "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif';
+  ctx.font = '900 54px "Chiron GoRound TC", "PingFang TC", "Microsoft JhengHei", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, 256, 50);
-  ctx.font = 'bold 20px "Bungee", "Arial Black", sans-serif';
+  ctx.font = 'bold 20px "Fredoka", "Arial Black", sans-serif';
   ctx.fillStyle = '#ffd23f';
   ctx.fillText(sub, 256, 116);
   return toTexture(c, { repeat: false });
@@ -551,7 +551,7 @@ export function posterTexture(i) {
   ctx.arc(128, 150, 80, 0, Math.PI * 2);
   ctx.fill();
   ctx.globalAlpha = 1;
-  ctx.font = '900 40px "Bungee", "Arial Black", sans-serif';
+  ctx.font = '900 40px "Fredoka", "Arial Black", sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#fff';
   const titles = ['SUMMER', 'COIN RUSH', 'NIGHT LINE', 'GOLD RUN'];
@@ -693,7 +693,7 @@ export function neonSignTexture(text, color, vertical = false) {
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  const font = /[A-Z0-9]/.test(text[0]) ? '"Bungee", "Arial Black", sans-serif' : '"Noto Sans TC", "PingFang TC", sans-serif';
+  const font = /[A-Z0-9]/.test(text[0]) ? '"Fredoka", "Arial Black", sans-serif' : '"Chiron GoRound TC", "PingFang TC", sans-serif';
   if (vertical) {
     const chars = [...text];
     const size = Math.min(110, (H - 60) / chars.length);

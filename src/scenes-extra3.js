@@ -32,7 +32,7 @@ function canvasTex(w, h, draw, repeat = false) {
   return t;
 }
 
-const FONT = '"Noto Sans TC", "Hiragino Sans", "PingFang TC", sans-serif';
+const FONT = '"Chiron GoRound TC", "Hiragino Sans", "PingFang TC", sans-serif';
 
 // ======================= 日本地鐵 =======================
 const JP_LINE = '#f08c1c';

@@ -82,9 +82,16 @@ const damp = (a, b, rate, dt) => a + (b - a) * (1 - Math.exp(-rate * dt));
 
 async function waitFonts() {
   if (!document.fonts) return;
-  const timeout = new Promise((r) => setTimeout(r, 1500));
+  // 中文字型依字元分包下載：先把畫在 Canvas 上的字都載好，招牌才不會用到備用字型
+  const canvasText =
+    '金幣大道站酷跑拉麵卡拉咖啡壽司珍珠奶茶滷肉飯雞排豆花鹽酥刈包港輕軌急行各停星見台海風山桜町月島橋福花貝餅糖楓禮衝飛磁跳盾慢雨巨板';
+  const timeout = new Promise((r) => setTimeout(r, 2500));
   await Promise.race([
-    Promise.all([document.fonts.load('900 40px "Bungee"'), document.fonts.load('900 40px "Noto Sans TC"', '金幣')]),
+    Promise.all([
+      document.fonts.load('700 40px "Fredoka"', 'RUN FOR COINS 0123456789'),
+      document.fonts.load('900 40px "Chiron GoRound TC"', canvasText),
+      document.fonts.load('600 16px "Chiron GoRound TC"', '金幣酷跑開始奔跑'),
+    ]),
     timeout,
   ]).catch(() => {});
 }
@@ -662,7 +669,7 @@ level.onGap = (z, room) => {
   const lane = (Math.random() * 3) | 0;
   const L = nextLetter();
   if (L && !S.letterPending && S.distance - S.letterAt > 260 && Math.random() < 0.35) {
-    level.addItem('letter', L, '#7b3fe4', '#ffffff', lane, z - room / 2, '"Bungee", sans-serif');
+    level.addItem('letter', L, '#7b3fe4', '#ffffff', lane, z - room / 2, '"Fredoka", sans-serif');
     S.letterPending = true;
     S.letterAt = S.distance;
     return;

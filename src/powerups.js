@@ -14,7 +14,7 @@ function labelTexture(text, bg, fg = '#ffffff') {
   ctx.strokeStyle = '#ffe28a';
   ctx.stroke();
   ctx.fillStyle = fg;
-  ctx.font = '900 64px "Bungee", "Arial Black", sans-serif';
+  ctx.font = '900 64px "Fredoka", "Arial Black", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, 64, 68);
@@ -37,7 +37,7 @@ function boxTexture() {
   ctx.lineWidth = 10;
   ctx.strokeRect(5, 5, 118, 118);
   ctx.fillStyle = '#ffffff';
-  ctx.font = '900 84px "Bungee", "Arial Black", sans-serif';
+  ctx.font = '900 84px "Fredoka", "Arial Black", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('?', 64, 70);

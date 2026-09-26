@@ -8,8 +8,8 @@
   --paper: #fff8e8;
   --steel: #c9d3de;
   --glass: rgba(18, 23, 34, 0.62);
-  --display: 'Bungee', 'Arial Black', Impact, sans-serif;
-  --body: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif;
+  --display: 'Fredoka', 'Chiron GoRound TC', 'Arial Rounded MT Bold', 'Arial Black', sans-serif;
+  --body: 'Chiron GoRound TC', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif;
 }
 
 * {
@@ -24,6 +24,7 @@ body {
   background: var(--ink);
   color: var(--paper);
   font-family: var(--body);
+  font-weight: 600;
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -382,7 +383,7 @@ button:focus-visible {
 .h-en {
   font-family: var(--display);
   font-size: clamp(44px, 9vw, 104px);
-  font-weight: 400;
+  font-weight: 700;
   color: var(--gold);
   text-shadow: 0 4px 0 var(--gold-deep), 0 10px 30px rgba(0, 0, 0, 0.45);
 }
@@ -824,7 +825,7 @@ kbd {
   margin: 0 0 6px;
   font-family: var(--display);
   font-size: clamp(26px, 5vw, 38px);
-  font-weight: 400;
+  font-weight: 700;
 }
 
 .banner p {
@@ -1038,7 +1039,7 @@ kbd {
   background: var(--sw);
   font-family: var(--display);
   font-size: 18px;
-  font-weight: 400;
+  font-weight: 700;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
@@ -1586,7 +1587,7 @@ kbd {
 .quality-btn small {
   margin-left: 4px;
   font-size: 11px;
-  font-weight: 400;
+  font-weight: 700;
   color: var(--steel);
 }
 
@@ -2194,7 +2195,7 @@ kbd {
   justify-items: center;
   font-family: var(--display);
   font-size: 15px;
-  font-weight: 400;
+  font-weight: 700;
   color: var(--gold);
 }
 
@@ -2381,4 +2382,26 @@ kbd {
 
 #pauseScreen .card .btn-ghost {
   padding: 12px 20px;
+}
+
+/* 圓體：數字與英文標題一律用粗的 Fredoka */
+.hud-score #score,
+.coin-pill,
+.stats dd,
+.ticket-grid dd,
+.big-score,
+.combo,
+.fpop,
+.bank,
+.event-btn b,
+.event-card > b,
+.word-hud i,
+.word-big i,
+.token-hud,
+.pw b,
+.board-btn b,
+.chip-btn b,
+.scene-tag,
+.mult {
+  font-weight: 700;
 }

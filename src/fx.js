@@ -307,7 +307,7 @@ export class LaneWarnings {
 
 // ---------- 活動代幣、字母：發光圓牌 ----------
 const itemMats = new Map();
-export function itemMaterial(char, color, ink, font = '"Noto Sans TC", sans-serif') {
+export function itemMaterial(char, color, ink, font = '"Chiron GoRound TC", sans-serif') {
   const key = `${char}|${color}|${ink}`;
   if (itemMats.has(key)) return itemMats.get(key);
   const c = document.createElement('canvas');
