@@ -10,6 +10,7 @@ import {
 } from './config.js';
 import * as THREE from 'three';
 import { POWERUPS } from './progress.js';
+import { itemMaterial } from './fx.js';
 
 // 加速帶：往前的發光箭頭
 function arrowTexture() {
@@ -71,8 +72,10 @@ export class Level {
     this.obstacles = [];
     this.coins = [];
     this.coinPool = [];
+    this.items = [];
     this.cursor = 0;
     this.difficulty = 0;
+    this.runDist = 0;
   }
 
   reset(playerZ = 0) {
@@ -81,6 +84,8 @@ export class Level {
     for (const p of this.powerups) this.scene.remove(p.mesh);
     for (const d of this.debris) this.scene.remove(d.mesh);
     for (const p of this.pads) this.scene.remove(p.mesh);
+    for (const it of this.items) this.scene.remove(it.mesh);
+    this.items = [];
     this.pads = [];
     this.obstacles = [];
     this.coins = [];
@@ -197,6 +202,35 @@ export class Level {
     this.pads.push({ mesh, lane, x: LANES[lane], z, used: false });
   }
 
+  // 活動代幣或字母：發光圓牌
+  addItem(kind, char, color, ink, lane, z, font) {
+    const mesh = new THREE.Sprite(itemMaterial(char, color, ink, font));
+    const y = this.surfaceAt(lane, z) + COIN_Y + 0.15;
+    mesh.position.set(LANES[lane], y, z);
+    mesh.scale.setScalar(kind === 'letter' ? 1.25 : 0.95);
+    this.scene.add(mesh);
+    this.items.push({ kind, char, mesh, x: LANES[lane], y, z, taken: false, t: 0, base: mesh.scale.x });
+  }
+
+  // 新手教學：換道、跳躍、滑鏟三個固定關卡，回傳每一步的位置
+  addTutorial() {
+    this.addTrain(1, -40, 1);
+    this.addCoinLine(0, -30, 9);
+    this.addCoinLine(2, -30, 9);
+    for (const lane of [0, 1, 2]) {
+      this.addBarrier('low', lane, -88);
+      this.addCoinArc(lane, -88);
+      this.addBarrier('high', lane, -130);
+      this.addCoinLine(lane, -124, 5, 2.2, () => GROUND + 0.55);
+    }
+    this.cursor = -190;
+    return [
+      { need: 'lane', z: -40, at: 14 },
+      { need: 'jump', z: -88 + 0.12, at: 4.6 },
+      { need: 'slide', z: -130 + 0.12, at: 5 },
+    ];
+  }
+
   addCoinLine(lane, zStart, count, spacing = 2.2, yFn = () => GROUND + COIN_Y) {
     for (let i = 0; i < count; i++) {
       const z = zStart - i * spacing;
@@ -276,6 +310,9 @@ export class Level {
         const z = this.cursor - len - 2;
         this.addPad(lane, z);
         this.addCoinLine(lane, z - 4, Math.max(2, Math.floor((gap - 8) / 2.2)));
+      } else if (this.chunkIndex > 1) {
+        // 活動代幣、每日字母（由主程式決定要不要放）
+        this.onGap?.(this.cursor - len - 1.5, gap - 3);
       }
       this.cursor -= len + gap;
       this.chunkIndex++;
@@ -284,13 +321,15 @@ export class Level {
 
   makeChunk(z0, speed) {
     const d = this.difficulty;
+    // 前 400 公尺：不出現迎面車輛和三條道全擋的組合，讓新手先熟悉
+    const early = this.runDist < 400;
     const table = [
       ['coins', 2.2 - d],
       ['barriers', 2.4],
       ['trainPair', 1.2 + d],
       ['rampTrain', 1.6 + d * 0.6],
-      ['moving', this.chunkIndex < 3 ? 0 : 0.5 + d * 1.6],
-      ['mixed', 0.8 + d * 1.2],
+      ['moving', this.chunkIndex < 3 || early ? 0 : 0.5 + d * 1.6],
+      ['mixed', early ? 0 : 0.8 + d * 1.2],
     ];
     const total = table.reduce((s, [, w]) => s + w, 0);
     let r = Math.random() * total;
@@ -477,6 +516,22 @@ export class Level {
     this.powerups = this.powerups.filter((p) => {
       const done = (p.taken && p.t > 0.2) || p.z > playerZ + 12;
       if (done) this.scene.remove(p.mesh);
+      return !done;
+    });
+
+    for (const it of this.items) {
+      if (it.taken) {
+        it.t += dt;
+        it.mesh.scale.setScalar(it.base * (1 + it.t * 6));
+        it.mesh.visible = it.t < 0.2;
+        it.mesh.position.y += dt * 6;
+      } else {
+        it.mesh.position.y = it.y + Math.sin(time * 3 + it.z * 0.3) * 0.12;
+      }
+    }
+    this.items = this.items.filter((it) => {
+      const done = (it.taken && it.t > 0.22) || it.z > playerZ + 12;
+      if (done) this.scene.remove(it.mesh);
       return !done;
     });
 

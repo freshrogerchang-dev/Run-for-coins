@@ -138,7 +138,50 @@ export const OUTFITS = [
     colors: { top: '#ffc21a', trim: '#fff1b0', pants: '#b8860b', hat: '#ffd700', hair: '#2b1b12', pack: '#ffd700', shoe: '#ffd700', sole: '#b8860b' },
     hat: 'crown', extras: ['sunglasses'], metallic: true,
   },
+  // ---------- 季節活動限定 ----------
+  {
+    id: 'lucky', name: '新春小福星', event: 'newyear', req: '新春紅包祭',
+    colors: { top: '#d7141a', trim: '#ffd23f', pants: '#8a0d12', hat: '#d7141a', hair: '#1a1a1a', pack: '#ffd23f', shoe: '#1a1a1a', sole: '#ffd23f' },
+    hat: 'beanie', extras: ['scarf'],
+  },
+  {
+    id: 'fairy', name: '花仙子', event: 'spring', req: '春日花祭',
+    colors: { top: '#ff9ad5', trim: '#ffffff', pants: '#8ad17a', hat: '#ff5fa2', hair: '#8a4a2a', pack: '#ffd1e8', shoe: '#8ad17a', sole: '#ffffff' },
+    hat: 'bunny', extras: [],
+  },
+  {
+    id: 'lifeguard', name: '海灘救生員', event: 'summer', req: '夏日海灘祭',
+    colors: { top: '#ff3b30', trim: '#ffd23f', pants: '#ffd23f', hat: '#ff3b30', hair: '#e8c170', pack: '#ff3b30', shoe: '#ffd23f', sole: '#1b1b1b' },
+    hat: 'none', extras: ['sunglasses'],
+  },
+  {
+    id: 'bunny', name: '玉兔裝', event: 'moon', req: '中秋賞月祭',
+    colors: { top: '#f7f3ee', trim: '#ffb3c7', pants: '#f7f3ee', hat: '#f7f3ee', hair: '#2b1b12', pack: '#c98a3a', shoe: '#ffb3c7', sole: '#f7f3ee' },
+    hat: 'bunny', extras: [],
+  },
+  {
+    id: 'pumpkin', name: '南瓜巫師', event: 'halloween', req: '萬聖節糖果祭',
+    colors: { top: '#ff7a00', trim: '#1a1420', pants: '#1a1420', hat: '#1a1420', hair: '#6a2a8a', pack: '#ff7a00', shoe: '#1a1420', sole: '#ff7a00' },
+    hat: 'witch', extras: [],
+  },
+  {
+    id: 'maple', name: '楓葉旅人', event: 'autumn', req: '秋收落葉祭',
+    colors: { top: '#c8511b', trim: '#f2c14e', pants: '#5a3a24', hat: '#a33a12', hair: '#4a2a1a', pack: '#f2c14e', shoe: '#5a3a24', sole: '#2a1a0a' },
+    hat: 'beanie', extras: ['scarf'],
+  },
+  {
+    id: 'santa', name: '聖誕老人', event: 'xmas', req: '聖誕禮物祭',
+    colors: { top: '#d81e2a', trim: '#ffffff', pants: '#d81e2a', hat: '#d81e2a', hair: '#ffffff', pack: '#6b4a32', shoe: '#1a1a1a', sole: '#333333' },
+    hat: 'santa', extras: [],
+  },
 ];
+
+// 活動服裝：活動期間收集足夠代幣就永久擁有
+export const eventOutfits = () => store.get('eventOutfits', []);
+export function grantEventOutfit(id) {
+  const list = eventOutfits();
+  if (!list.includes(id)) store.set('eventOutfits', [...list, id]);
+}
 
 // ---------- 關卡：每個場景一關，破關解鎖一套服裝 ----------
 export const STAGES = THEME_ORDER.map((scene, i) => ({
@@ -170,12 +213,16 @@ export function markCleared(scene) {
 export function outfitUnlocked(id) {
   if (id === 'street') return true;
   if (id === 'golden') return clearedStages().length >= STAGES.length;
+  const o = OUTFITS.find((x) => x.id === id);
+  if (o?.event) return eventOutfits().includes(id);
   const st = STAGES.find((s) => s.outfit === id);
   return st ? isCleared(st.scene) : false;
 }
 
 export function outfitRequirement(id) {
   if (id === 'golden') return `完成全部 ${STAGES.length} 關`;
+  const o = OUTFITS.find((x) => x.id === id);
+  if (o?.event) return `「${o.req}」活動獎勵`;
   const st = STAGES.find((s) => s.outfit === id);
   return st ? `完成第 ${st.no} 關「${st.name}」` : '';
 }

@@ -37,6 +37,10 @@
         <span id="dist" class="sub">0 m</span>
         <span id="sceneName" class="scene-tag">城市鐵道</span>
         <div id="goal" class="goal" hidden><span id="goalText"></span><i><i id="goalBar"></i></i></div>
+        <div class="hud-extra">
+          <span id="wordHud" class="word-hud" aria-label="每日字母" hidden></span>
+          <span id="tokenHud" class="token-hud" hidden></span>
+        </div>
       </div>
       <div class="hud-right">
         <div id="coinBox" class="coin-pill" aria-label="金幣">
@@ -58,6 +62,14 @@
       <svg class="off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" /><path d="M16.5 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
     </button>
 
+    <div id="screenFx" class="screen-fx" aria-hidden="true"></div>
+    <div id="laneWarn" class="lane-warns" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div id="pops" class="pops" aria-hidden="true"></div>
+    <div id="tutHint" class="tut-hint" role="status" hidden>
+      <div class="tut-gesture" aria-hidden="true"><i></i></div>
+      <b></b>
+      <small></small>
+    </div>
     <div id="powers" class="powers" aria-label="道具效果"></div>
     <div id="notes" class="notes" aria-live="polite"></div>
     <div id="combo" class="combo" hidden></div>
@@ -77,6 +89,11 @@
           <div><dt>金幣存款</dt><dd id="bankStart" class="num">0</dd></div>
           <div><dt>分數倍率</dt><dd id="multStart" class="num">×1</dd></div>
         </dl>
+        <button type="button" id="eventBtn" class="event-btn" hidden>
+          <i class="event-token" aria-hidden="true"></i>
+          <span><strong id="eventName"></strong><small id="eventInfo"></small></span>
+          <b id="eventCount" class="num"></b>
+        </button>
         <div class="menu-row">
           <button type="button" id="missionsBtn" class="chip-btn"><span>任務</span><b id="missionCount" class="num">0/3</b></button>
           <button type="button" id="stagesBtn" class="chip-btn"><span>關卡</span><b id="stagesCount" class="num">0/10</b></button>
@@ -117,7 +134,8 @@
           <li><kbd>P</kbd><span>暫停</span></li>
         </ul>
         <p class="touch-hint">手機：左右滑換道，上滑跳，下滑鏟，點兩下用滑板</p>
-        <p class="tip">撿發光泡泡裡的道具：衝刺鞋、噴射背包、磁鐵、雙倍金幣、彈跳鞋、防護罩、時光沙漏、金幣雨、巨人蘑菇和神秘寶箱。踩藍色箭頭加速帶會衝刺，連續吃金幣有連擊獎勵。每個場景的障礙不一樣：列車、巴士、鏟雪車、駱駝、大象、巨龜…迎面衝來的要提早換道！</p>
+        <button type="button" id="tutorialBtn" class="link-btn">重看新手教學</button>
+        <p class="tip">撿發光泡泡裡的道具：衝刺鞋、噴射背包、磁鐵、雙倍金幣、彈跳鞋、防護罩、時光沙漏、金幣雨、巨人蘑菇和神秘寶箱。踩藍色箭頭加速帶會衝刺，連續吃金幣有連擊獎勵。每個場景的障礙不一樣：列車、巴士、鏟雪車、駱駝、大象、巨龜…迎面衝來的車，地上會先出現紅色箭頭警示，要提早換道！</p>
       </div>
     </section>
 
@@ -137,9 +155,21 @@
           <button type="button" role="tab" data-tab="characters">角色</button>
           <button type="button" role="tab" data-tab="wardrobe">服裝</button>
           <button type="button" role="tab" data-tab="shop">商店</button>
+          <button type="button" role="tab" data-tab="events">活動</button>
         </div>
       </header>
       <div id="panelBody" class="panel-body"></div>
+    </section>
+
+    <!-- 每日登入 -->
+    <section id="loginScreen" class="overlay" hidden>
+      <div class="card login">
+        <p class="login-head">每日登入獎勵</p>
+        <h2 id="loginTitle">連續第 1 天</h2>
+        <ol id="loginDays" class="login-days"></ol>
+        <p class="login-note">連續登入七天拿大獎，中斷一天會從第 1 天重新開始</p>
+        <button id="loginBtn" class="btn-primary">領取</button>
+      </div>
     </section>
 
     <!-- 續跑 -->
@@ -173,6 +203,8 @@
           <div><dt>距離</dt><dd id="overDist" class="num">0 m</dd></div>
           <div><dt>最高分</dt><dd id="overBest" class="num">0</dd></div>
         </dl>
+        <p id="overCause" class="over-cause"></p>
+        <ul id="overProgress" class="over-progress"></ul>
         <p id="overMult" class="over-mult"></p>
         <div class="ticket-actions">
           <button id="againBtn" class="btn-primary">再跑一次</button>

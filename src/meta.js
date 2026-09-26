@@ -4,10 +4,10 @@ import { ownedPets, PETS } from './pets.js';
 
 // ---------- 角色 ----------
 export const CHARACTERS = [
-  { id: 'kid', name: '阿橘', desc: '活力滿滿的街頭跑者', price: 0 },
-  { id: 'girl', name: '小美', desc: '綁著馬尾的敏捷少女', price: 800 },
-  { id: 'robot', name: '機器人波特', desc: '發光面罩和天線的鐵皮跑者', price: 1800 },
-  { id: 'fox', name: '狐狸阿福', desc: '有蓬鬆大尾巴的狐狸', price: 3000 },
+  { id: 'kid', name: '阿橘', desc: '活力滿滿的街頭跑者', perk: '衝刺鞋和加速帶多 1 秒', price: 0 },
+  { id: 'girl', name: '小美', desc: '綁著馬尾的敏捷少女', perk: '金幣磁鐵多 3 秒', price: 800 },
+  { id: 'robot', name: '機器人波特', desc: '發光面罩和天線的鐵皮跑者', perk: '續跑費用減半', price: 1800 },
+  { id: 'fox', name: '狐狸阿福', desc: '有蓬鬆大尾巴的狐狸', perk: '跳得更高', price: 3000 },
 ];
 
 export function ownedCharacters() {
@@ -44,13 +44,12 @@ const POOL = [
 const SINGLE = { run: 'bestRun', combo: 'maxCombo' };
 export const DAILY_BONUS = 500;
 
-function today() {
-  const d = new Date();
+export function today(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 // 用日期當種子，同一天每次打開都是同樣三個任務
-function seeded(str) {
+export function seeded(str) {
   let h = 2166136261;
   for (const ch of str) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
   return () => {
@@ -79,6 +78,7 @@ export function missionText(m) {
 }
 
 // ---------- 成就 ----------
+const STAGE_OUTFITS = OUTFITS.filter((o) => !o.event).length;
 export const ACHIEVEMENTS = [
   { id: 'first', name: '第一步', desc: '完成第一場奔跑', stat: 'runs', goal: 1, reward: 50 },
   { id: 'jump500', name: '跳跳虎', desc: '累積跳躍 500 次', stat: 'jumps', goal: 500, reward: 300 },
@@ -98,7 +98,7 @@ export const ACHIEVEMENTS = [
   { id: 'storm120', name: '風雨無阻', desc: '在暴風雨中累積跑 120 秒', stat: 'storm', goal: 120, reward: 300 },
   { id: 'daily15', name: '每日好習慣', desc: '完成 15 個每日任務', stat: 'missionsDone', goal: 15, reward: 800 },
   { id: 'stages10', name: '全關制霸', desc: `完成全部 ${STAGES.length} 關`, stat: 'stages', goal: STAGES.length, reward: 3000 },
-  { id: 'outfits', name: '衣櫃滿滿', desc: `解鎖全部 ${OUTFITS.length} 套服裝`, stat: 'outfits', goal: OUTFITS.length, reward: 1500 },
+  { id: 'outfits', name: '衣櫃滿滿', desc: `解鎖全部 ${STAGE_OUTFITS} 套關卡服裝`, stat: 'outfits', goal: STAGE_OUTFITS, reward: 1500 },
   { id: 'chars', name: '好朋友們', desc: '擁有全部 4 個角色', stat: 'chars', goal: 4, reward: 1000 },
   { id: 'combo100', name: '連擊大師', desc: '單場金幣連擊達到 100', stat: 'maxCombo', goal: 100, reward: 800 },
   { id: 'boost50', name: '加速狂', desc: '累積踩 50 次加速帶', stat: 'boosts', goal: 50, reward: 400 },
@@ -126,7 +126,7 @@ export class Meta {
 
   stat(key) {
     if (key === 'stages') return clearedStages().length;
-    if (key === 'outfits') return OUTFITS.filter((o) => outfitUnlocked(o.id)).length;
+    if (key === 'outfits') return OUTFITS.filter((o) => !o.event && outfitUnlocked(o.id)).length;
     if (key === 'chars') return ownedCharacters().length;
     if (key === 'pets') return ownedPets().length;
     return this.stats[key] || 0;

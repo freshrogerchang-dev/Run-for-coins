@@ -247,15 +247,47 @@ export class Sfx {
   }
 
   // ---------- 動作音效 ----------
-  coin() {
+  // combo：連擊數，音高沿大調音階往上爬（最多兩個八度）
+  coin(combo = 1) {
     if (!this.ctx) return;
-    const now = this.ctx.currentTime;
-    this.coinStreak = now - this.lastCoin < 0.45 ? Math.min(this.coinStreak + 1, 12) : 0;
-    this.lastCoin = now;
-    const base = 988 * Math.pow(2, (this.coinStreak % 13) / 24);
+    const SCALE = [0, 2, 4, 5, 7, 9, 11];
+    const i = Math.min(Math.max(0, combo - 1), 14);
+    const semi = SCALE[i % 7] + 12 * Math.floor(i / 7);
+    const base = 880 * Math.pow(2, semi / 12);
     this.tone(base, 0.08, { type: 'square', vol: 0.07 });
     this.tone(base * 1.5, 0.22, { type: 'triangle', vol: 0.12, delay: 0.05 });
-    if (this.coinStreak === 12) this.sparkle(0.12);
+    if (combo > 0 && combo % 15 === 0) this.sparkle(0.12);
+  }
+
+  // 迎面車輛警示：兩聲短嗶
+  warn() {
+    this.tone(1175, 0.09, { type: 'square', vol: 0.07 });
+    this.tone(1175, 0.09, { type: 'square', vol: 0.07, delay: 0.14 });
+  }
+
+  token() {
+    this.tone(1319, 0.1, { type: 'triangle', vol: 0.12 });
+    this.tone(1976, 0.22, { type: 'triangle', vol: 0.1, delay: 0.06 });
+    this.burst(0.2, { vol: 0.05, freq: 5000, q: 2, delay: 0.04 });
+  }
+
+  letter() {
+    [784, 988, 1175, 1568].forEach((f, i) => this.tone(f, 0.16, { type: 'triangle', vol: 0.1, delay: i * 0.05 }));
+  }
+
+  nearMiss() {
+    this.tone(1568, 0.12, { type: 'sine', vol: 0.08, slide: 600 });
+  }
+
+  // 撞擊的低頻重擊（打擊感）
+  thud() {
+    this.tone(90, 0.28, { type: 'sine', vol: 0.4, slide: -50 });
+    this.burst(0.14, { vol: 0.2, freq: 300, q: 0.7, type: 'lowpass' });
+  }
+
+  tutorialStep() {
+    this.tone(1047, 0.12, { type: 'triangle', vol: 0.14 });
+    this.tone(1568, 0.25, { type: 'triangle', vol: 0.12, delay: 0.08 });
   }
 
   sparkle(delay = 0) {

@@ -230,6 +230,21 @@ export class Player {
     part(hemi(0.225), m.hat, hats.pandahood, { y: 0.22 });
     for (const x of [-0.16, 0.16]) part(new THREE.SphereGeometry(0.075, 12, 10), m.trim, hats.pandahood, { x, y: 0.42, z: 0.02 });
 
+    // 兔耳（玉兔裝、花仙子）
+    hats.bunny = g();
+    part(hemi(0.215), m.hat, hats.bunny, { y: 0.22 });
+    for (const s of [-1, 1]) {
+      const ear = pivot(hats.bunny, s * 0.09, 0.36, 0.02);
+      ear.rotation.z = -s * 0.18;
+      part(new THREE.CapsuleGeometry(0.055, 0.26, 4, 10), m.hat, ear, { y: 0.16, sz: 0.6 });
+      part(new THREE.CapsuleGeometry(0.03, 0.2, 4, 8), m.trim, ear, { y: 0.16, z: -0.025, sz: 0.4 });
+    }
+    // 聖誕帽
+    hats.santa = g();
+    part(new THREE.TorusGeometry(0.2, 0.055, 8, 24), m.trim, hats.santa, { y: 0.27, rx: Math.PI / 2 });
+    part(new THREE.ConeGeometry(0.2, 0.42, 18), m.hat, hats.santa, { y: 0.47, z: 0.05, rx: 0.45 });
+    part(new THREE.SphereGeometry(0.07, 12, 10), m.trim, hats.santa, { y: 0.63, z: 0.16 });
+
     hats.none = g();
     part(new THREE.SphereGeometry(0.205, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.4), m.hair, hats.none, { y: 0.23, sy: 1.25 });
     this.hats = hats;
@@ -407,6 +422,7 @@ export class Player {
     const deck = new THREE.MeshStandardMaterial({ color: '#ff3d7f', roughness: 0.35, metalness: 0.3 });
     const stripe = new THREE.MeshStandardMaterial({ color: '#ffd23f', roughness: 0.4 });
     const glowMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.5, 2.6, 4), transparent: true, opacity: 0.9 });
+    this.boardMats = { deck, stripe, glow: glowMat };
     part(new RoundedBoxGeometry(0.62, 0.07, 1.5, 3, 0.03), deck, this.board, { y: 0.14 });
     part(new THREE.BoxGeometry(0.64, 0.075, 0.12), stripe, this.board, { y: 0.14, z: -0.4 });
     part(new THREE.BoxGeometry(0.64, 0.075, 0.12), stripe, this.board, { y: 0.14, z: 0.4 });
@@ -418,6 +434,13 @@ export class Player {
     }
     this.board.visible = false;
     this.root.add(this.board);
+  }
+
+  // 滑板種類：板面、條紋與底部光的顏色
+  setBoardStyle(b) {
+    this.boardMats.deck.color.set(b.deck);
+    this.boardMats.stripe.color.set(b.stripe);
+    this.boardMats.glow.color.setRGB(...b.glow);
   }
 
   setPower(fx) {
