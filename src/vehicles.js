@@ -503,7 +503,77 @@ function pandas(v) {
   return P;
 }
 
-const BUILDERS = { bus, plow, hoverbus, camels, floats, elephants, tortoises, rovers, subs, icecream, dinos, pumpkins, airships, pandas };
+// ---------------- 日本地鐵電車（不鏽鋼車身 + 路線色帶） ----------------
+function metro(v) {
+  const line = ['#f08c1c', '#1d9b5a', '#2a6fdb'][v];
+  const P = new Parts();
+  const steel = std('#d5dae0', { roughness: 0.28, metalness: 0.75 });
+  const door = std('#bcc2c9', { roughness: 0.3, metalness: 0.7 });
+  const band = std(line, { roughness: 0.4 });
+  const glass = std('#1b2530', { roughness: 0.08, metalness: 0.5 });
+  const dark = std('#23262b', { roughness: 0.8 });
+  const L = 11.8;
+  P.add(steel, rbox(2.3, 3.0, L, 0.16), 0, 2.0, -L / 2);
+  P.add(dark, box(2.0, 0.45, L - 1.2), 0, 0.42, -L / 2);
+  P.add(glass, box(2.34, 0.85, L - 1.4), 0, 2.4, -L / 2);
+  P.add(band, box(2.35, 0.24, L - 0.3), 0, 1.72, -L / 2);
+  P.add(band, box(2.35, 0.08, L - 0.3), 0, 3.02, -L / 2);
+  // 每側四扇車門
+  for (const z of [-1.7, -4.5, -7.3, -10.1]) {
+    P.add(door, box(2.37, 2.15, 1.3), 0, 1.78, z);
+    for (const dz of [-0.33, 0.33]) P.add(glass, box(2.39, 0.8, 0.46), 0, 2.35, z + dz);
+  }
+  // 車頭：大擋風玻璃、路線色帶、行先表示器、頭燈
+  P.add(glass, box(1.95, 1.05, 0.06), 0, 2.45, 0.0);
+  P.add(band, box(2.2, 0.36, 0.06), 0, 1.6, 0.0);
+  P.add(glow(4, 2.4, 0.5), box(1.2, 0.24, 0.05), 0, 3.18, 0.01);
+  P.add(dark, box(0.9, 0.3, 0.1), 0, 0.85, 0.0);
+  for (const x of [-0.72, 0.72]) {
+    P.add(glow(4, 3.8, 3.2), cyl(0.12, 0.12, 0.05, 14), x, 1.2, 0.02, WHEEL);
+    P.lamp(x, 1.2, 0.2);
+  }
+  // 轉向架與車輪
+  for (const zc of [-2.2, -9.6]) {
+    P.add(dark, box(1.9, 0.35, 2.4), 0, 0.5, zc);
+    for (const dz of [-0.8, 0.8]) for (const x of [-0.75, 0.75]) P.add(dark, cyl(0.36, 0.36, 0.14, 16), x, 0.52, zc + dz, 0, 0, WHEEL);
+  }
+  return P;
+}
+
+// ---------------- 輕軌列車（白色低地板車身 + 流線色帶） ----------------
+function tram(v) {
+  const acc = ['#12a37e', '#f08a24', '#2e86de'][v];
+  const P = new Parts();
+  const white = std('#f3f5f4', { roughness: 0.3, metalness: 0.1 });
+  const accent = std(acc, { roughness: 0.4 });
+  const glass = std('#16222c', { roughness: 0.06, metalness: 0.5 });
+  const dark = std('#2a2d31', { roughness: 0.8 });
+  const L = 11.8;
+  P.add(white, rbox(2.3, 2.7, L, 0.35, 4), 0, 1.85, -L / 2);
+  P.add(white, rbox(1.9, 0.34, L - 1.2, 0.12), 0, 3.33, -L / 2);
+  P.add(glass, box(2.34, 1.35, L - 1.1), 0, 2.2, -L / 2);
+  P.add(accent, box(2.35, 0.38, L - 0.4), 0, 0.95, -L / 2);
+  P.add(accent, box(2.36, 0.1, L - 0.8), 0, 3.0, -L / 2);
+  // 側面的斜向波浪色帶
+  for (const z of [-2.8, -6.2, -9.6]) P.add(accent, box(2.37, 0.14, 2.6), 0, 1.45, z, 0.28);
+  // 三組車門
+  for (const z of [-2.0, -5.9, -9.8]) {
+    P.add(accent, box(2.38, 2.1, 1.25), 0, 1.7, z);
+    for (const dz of [-0.3, 0.3]) P.add(glass, box(2.4, 1.45, 0.44), 0, 1.95, z + dz);
+  }
+  // 車頭：大片前擋、LED 路線牌、頭燈
+  P.add(glass, box(2.0, 1.45, 0.06), 0, 2.25, 0.02, -0.1);
+  P.add(glow(3.6, 2.8, 0.6), box(1.3, 0.22, 0.05), 0, 3.05, 0.03);
+  P.add(accent, box(2.1, 0.35, 0.06), 0, 1.05, 0.02);
+  for (const x of [-0.75, 0.75]) {
+    P.add(glow(4, 3.8, 3.2), cyl(0.11, 0.11, 0.05, 14), x, 1.3, 0.04, WHEEL);
+    P.lamp(x, 1.3, 0.22);
+  }
+  P.add(dark, box(2.0, 0.3, L - 2.0), 0, 0.45, -L / 2);
+  return P;
+}
+
+const BUILDERS = { bus, plow, hoverbus, camels, floats, elephants, tortoises, rovers, subs, icecream, dinos, pumpkins, airships, pandas, metro, tram };
 export const VEHICLE_NAMES = {
   train: '列車',
   bus: '觀光巴士',
@@ -520,6 +590,8 @@ export const VEHICLE_NAMES = {
   pumpkins: '南瓜馬車',
   airships: '飛船',
   pandas: '大熊貓',
+  metro: '地鐵電車',
+  tram: '輕軌列車',
 };
 export const ANIMALS = ['camels', 'elephants', 'tortoises', 'dinos', 'pandas'];
 

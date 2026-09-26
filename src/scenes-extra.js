@@ -14,6 +14,7 @@ import {
 } from './textures.js';
 import { SEG_LEN } from './config.js';
 import { EXTRA_BUILDERS2 } from './scenes-extra2.js';
+import { EXTRA_BUILDERS3 } from './scenes-extra3.js';
 
 const L = SEG_LEN;
 const HALF = -L / 2;
@@ -649,6 +650,7 @@ export const EXTRA_BUILDERS = {
   volcano: build_volcano,
   space: build_space,
   ...EXTRA_BUILDERS2,
+  ...EXTRA_BUILDERS3,
 };
 
 // 全域動畫：熔岩流動、瀑布、太空場景天上的行星

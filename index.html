@@ -121,9 +121,11 @@
             <button type="button" role="radio" data-scene="halloween" aria-checked="false"><i></i><span>南瓜鎮</span></button>
             <button type="button" role="radio" data-scene="skycity" aria-checked="false"><i></i><span>天空之城</span></button>
             <button type="button" role="radio" data-scene="bamboo" aria-checked="false"><i></i><span>熊貓竹林</span></button>
+            <button type="button" role="radio" data-scene="japan" aria-checked="false"><i></i><span>日本地鐵</span></button>
+            <button type="button" role="radio" data-scene="taiwan" aria-checked="false"><i></i><span>台灣輕軌</span></button>
             <button type="button" role="radio" data-scene="tour" aria-checked="false" class="tour"><i></i><span>環遊模式</span></button>
           </div>
-          <p class="scene-note">環遊模式每 600 公尺換一個場景，十六個場景輪流出現</p>
+          <p class="scene-note">環遊模式每 600 公尺換一個場景，十八個場景輪流出現</p>
         </fieldset>
         <button id="startBtn" class="btn-primary">開始奔跑</button>
         <ul class="controls">
@@ -134,7 +136,10 @@
           <li><kbd>P</kbd><span>暫停</span></li>
         </ul>
         <p class="touch-hint">手機：左右滑換道，上滑跳，下滑鏟，點兩下用滑板</p>
-        <button type="button" id="tutorialBtn" class="link-btn">重看新手教學</button>
+        <div class="link-row">
+          <button type="button" id="tutorialBtn" class="link-btn">重看新手教學</button>
+          <button type="button" id="resetBtn" class="link-btn danger">重置遊戲進度</button>
+        </div>
         <p class="tip">撿發光泡泡裡的道具：衝刺鞋、噴射背包、磁鐵、雙倍金幣、彈跳鞋、防護罩、時光沙漏、金幣雨、巨人蘑菇和神秘寶箱。踩藍色箭頭加速帶會衝刺，連續吃金幣有連擊獎勵。每個場景的障礙不一樣：列車、巴士、鏟雪車、駱駝、大象、巨龜…迎面衝來的車，地上會先出現紅色箭頭警示，要提早換道！</p>
       </div>
     </section>
@@ -172,6 +177,22 @@
       </div>
     </section>
 
+    <!-- 重置確認 -->
+    <section id="resetScreen" class="overlay" hidden>
+      <div class="card reset-card">
+        <h2>重置遊戲進度？</h2>
+        <p>會清除所有進度，回到第一次玩的狀態：</p>
+        <ul class="reset-list">
+          <li>最高分、金幣存款、道具升級、滑板</li>
+          <li>已破的關卡、解鎖的服裝、角色、寵物、滑板種類</li>
+          <li>每日任務、成就、登入紀錄、活動代幣</li>
+        </ul>
+        <p class="reset-keep">畫質與音效設定會保留。這個動作不能復原。</p>
+        <button id="resetConfirm" class="btn-danger">確定重置</button>
+        <button id="resetCancel" class="btn-ghost">取消</button>
+      </div>
+    </section>
+
     <!-- 續跑 -->
     <section id="reviveScreen" class="overlay" hidden>
       <div class="card revive">
@@ -188,6 +209,8 @@
       <div class="card">
         <h2>暫停中</h2>
         <button id="resumeBtn" class="btn-primary">繼續</button>
+        <button id="restartBtn" class="btn-ghost">重新開始這一局</button>
+        <button id="quitBtn" class="btn-ghost">回到月台</button>
         <button type="button" class="quality-btn">畫質：<b>高</b></button>
       </div>
     </section>

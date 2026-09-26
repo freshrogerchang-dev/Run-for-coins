@@ -1624,7 +1624,7 @@ kbd {
 }
 
 .scene-grid .tour i {
-  background: linear-gradient(90deg, #3f86d8, #1fa2e0, #1b1f27, #9cc3e6, #ff3db5, #e0773a, #ffb7d0, #1f6b3a, #ff5a1f, #05060f, #3fd0e0, #ff9ad5, #5a7a2a, #ff8a1c, #ffffff, #2f6b2a);
+  background: linear-gradient(90deg, #3f86d8, #1fa2e0, #1b1f27, #9cc3e6, #ff3db5, #e0773a, #ffb7d0, #1f6b3a, #ff5a1f, #05060f, #3fd0e0, #ff9ad5, #5a7a2a, #ff8a1c, #ffffff, #2f6b2a, #f08c1c, #12836b);
 }
 
 @media (max-width: 400px) {
@@ -2320,4 +2320,65 @@ kbd {
   .tut-gesture i {
     animation: none;
   }
+}
+
+/* ======================= 重置 ======================= */
+.link-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.link-btn.danger {
+  color: #ff8a7a;
+}
+
+.btn-danger {
+  border: 0;
+  border-radius: 12px;
+  padding: 14px 20px;
+  background: var(--signal);
+  color: #fff;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  box-shadow: 0 4px 0 #a82a1f;
+}
+
+.btn-danger:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #a82a1f;
+}
+
+.reset-card {
+  text-align: left;
+}
+
+.reset-card h2 {
+  text-align: center;
+  letter-spacing: 0.1em;
+}
+
+.reset-card p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.reset-list {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--steel);
+}
+
+.reset-keep {
+  color: #ff8a7a;
+  font-weight: 700;
+}
+
+#pauseScreen .card .btn-ghost {
+  padding: 12px 20px;
 }

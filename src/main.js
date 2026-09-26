@@ -118,7 +118,7 @@ pet.set(activePet());
 const aura = new SpeedAura(stage.scene, player);
 const warnings = new LaneWarnings(stage.scene);
 player.setBoardStyle(activeBoard());
-const NO_RAIN = ['tunnel', 'space', 'snow', 'volcano'];
+const NO_RAIN = ['tunnel', 'space', 'snow', 'volcano', 'japan'];
 
 const JUMP_V = Math.sqrt(2 * GRAVITY * JUMP_HEIGHT);
 const JUMP_V_SPRING = Math.sqrt(2 * GRAVITY * 4.6);
@@ -993,7 +993,7 @@ function updateTrainAudio(dt) {
   if (p > 0.3) {
     S.clackT -= dt;
     if (S.clackT <= 0) {
-      if (vehicleNear === 'train') sfx.clack();
+      if (['train', 'metro', 'tram'].includes(vehicleNear)) sfx.clack();
       else if (['camels', 'elephants', 'tortoises', 'dinos', 'pandas'].includes(vehicleNear)) sfx.step('sand');
       S.clackT = 0.5 - p * 0.25;
     }
@@ -1577,6 +1577,53 @@ $('boardBtn').addEventListener('click', (e) => {
 });
 $('reviveBtn').addEventListener('click', doRevive);
 
+// ---------- 重置遊戲進度 ----------
+const KEEP_KEYS = ['quality', 'muted', 'music'];
+$('resetBtn').addEventListener('click', () => {
+  sfx.ensure();
+  sfx.click();
+  $('resetScreen').hidden = false;
+});
+$('resetCancel').addEventListener('click', () => {
+  sfx.click();
+  $('resetScreen').hidden = true;
+});
+$('resetConfirm').addEventListener('click', () => {
+  // 先停止存檔，避免重新整理時又把記憶體裡的進度寫回去
+  meta.save = () => {};
+  meta.flush = () => {};
+  try {
+    for (const k of Object.keys(localStorage)) {
+      if (k.startsWith('rfc-') && !KEEP_KEYS.includes(k.slice(4))) localStorage.removeItem(k);
+    }
+  } catch {
+    /* 無法存取 localStorage 時沒有進度可清 */
+  }
+  location.reload();
+});
+
+// ---------- 暫停選單：重新開始、回到月台 ----------
+// 中途離開時，這局的金幣照樣存進存款，分數也會列入最高分
+function bankRun() {
+  store.set('bank', store.get('bank', 0) + S.coins);
+  const sc = score();
+  if (sc > store.get('best', 0)) store.set('best', sc);
+  meta.flush();
+}
+$('restartBtn').addEventListener('click', () => {
+  if (S.mode !== 'paused') return;
+  bankRun();
+  ui.pause.hidden = true;
+  resetRun();
+  S.mode = 'over';
+  startGame();
+});
+$('quitBtn').addEventListener('click', () => {
+  if (S.mode !== 'paused') return;
+  bankRun();
+  showMenu();
+});
+
 function renderQuality() {
   for (const b of document.querySelectorAll('.quality-btn')) b.querySelector('b').textContent = QUALITY[quality];
 }
@@ -1613,7 +1660,7 @@ function flash(msg) {
 
 function startGame(forceTutorial = false) {
   sfx.ensure();
-  if (!ui.login.hidden) return;
+  if (!ui.login.hidden || !$('resetScreen').hidden) return;
   if (S.mode === 'over') resetRun();
   S.mode = 'playing';
   // 第一次玩（或從選單重看）先跑教學
@@ -1800,7 +1847,7 @@ ui.musicBtn.addEventListener('click', () => {
   sfx.ensure();
   toggleMusic();
 });
-for (const id of ['startBtn', 'againBtn', 'menuBtn', 'resumeBtn', 'pauseBtn', 'stagesBtn', 'wardrobeBtn', 'shopBtn', 'missionsBtn', 'achBtn', 'charBtn', 'reviveBtn', 'giveUpBtn']) {
+for (const id of ['startBtn', 'againBtn', 'menuBtn', 'resumeBtn', 'pauseBtn', 'stagesBtn', 'wardrobeBtn', 'shopBtn', 'missionsBtn', 'achBtn', 'charBtn', 'reviveBtn', 'giveUpBtn', 'restartBtn', 'quitBtn']) {
   $(id).addEventListener('pointerdown', () => {
     sfx.ensure();
     sfx.click();
@@ -1811,6 +1858,10 @@ for (const id of ['startBtn', 'againBtn', 'menuBtn', 'resumeBtn', 'pauseBtn', 's
 addEventListener('keydown', (e) => {
   if (e.repeat) return;
   const k = e.key;
+  if (!$('resetScreen').hidden) {
+    if (k === 'Escape') $('resetScreen').hidden = true;
+    return;
+  }
   if (!ui.login.hidden) {
     if (k === 'Enter' || k === ' ') {
       e.preventDefault();
@@ -2033,4 +2084,4 @@ maybeShowLogin();
 frame();
 
 // 方便除錯
-window.__rfc = { S, level, stage, update, present, moveLane, jump, slide, activatePower, clearStage, openPanel, store, meta, chaser, useBoard, sideBump, startGame, aura, warnings, player };
+window.__rfc = { S, level, stage, update, present, moveLane, jump, slide, activatePower, clearStage, openPanel, store, meta, chaser, useBoard, sideBump, startGame, aura, warnings, player, env, selectScene };

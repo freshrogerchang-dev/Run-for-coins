@@ -134,6 +134,16 @@ export const OUTFITS = [
     hat: 'pandahood', extras: [],
   },
   {
+    id: 'ekiin', name: '日本站務員',
+    colors: { top: '#1c2a4a', trim: '#f08c1c', pants: '#1c2a4a', hat: '#1c2a4a', hair: '#1a1a1a', pack: '#f4f4f0', shoe: '#1a1a1a', sole: '#333333' },
+    hat: 'conductor', extras: [],
+  },
+  {
+    id: 'lrtdriver', name: '輕軌司機',
+    colors: { top: '#12836b', trim: '#ffffff', pants: '#2d3a4a', hat: '#12836b', hair: '#2b1b12', pack: '#ffd23f', shoe: '#f4f4f0', sole: '#12836b' },
+    hat: 'cap', extras: ['sunglasses'],
+  },
+  {
     id: 'golden', name: '黃金傳奇',
     colors: { top: '#ffc21a', trim: '#fff1b0', pants: '#b8860b', hat: '#ffd700', hair: '#2b1b12', pack: '#ffd700', shoe: '#ffd700', sole: '#b8860b' },
     hat: 'crown', extras: ['sunglasses'], metallic: true,
@@ -184,13 +194,15 @@ export function grantEventOutfit(id) {
 }
 
 // ---------- 關卡：每個場景一關，破關解鎖一套服裝 ----------
+// 每關的獎勵服裝依序對應（不含預設、黃金傳奇與活動限定）
+const STAGE_OUTFITS = OUTFITS.filter((o) => !o.event && o.id !== 'street' && o.id !== 'golden');
 export const STAGES = THEME_ORDER.map((scene, i) => ({
   no: i + 1,
   scene,
   name: THEMES[scene].name,
   distance: 700 + i * 150,
   coins: 50 + i * 20,
-  outfit: OUTFITS[i + 1].id,
+  outfit: STAGE_OUTFITS[i].id,
 }));
 
 export function clearedStages() {

@@ -640,11 +640,15 @@ export class Environment {
     u.ground.material = this.groundMats[id];
     u.ballast.material = this.ballastMats[id];
     // 鐵道場景有軌道和電車線；其他場景換成道路或小徑
-    const rail = THEMES[id].track === 'rail';
+    const T = THEMES[id];
+    const rail = T.track === 'rail';
     for (const m of u.railParts) m.visible = rail;
+    // 無架空線的輕軌、草皮軌道（看不到枕木）
+    if (T.noWires) u.railParts[3].visible = false;
+    if (T.grassTrack) u.railParts[4].visible = false;
     u.road.visible = !rail;
     if (!rail) u.road.material = this.roadMats[id];
-    u.gantry.visible = rail && id !== 'tunnel';
+    u.gantry.visible = rail && id !== 'tunnel' && !T.noGantry;
     if (id === 'seaside') {
       u.ground.scale.x = 53 / 90;
       u.ground.position.x = -18.5;

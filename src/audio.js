@@ -104,6 +104,20 @@ const MUSIC = {
     bass: 'sine', bassVol: 0.45, lead: 'triangle', leadVol: 0.14, leadCut: 0,
     kick: false, snare: false, hat: false, sparse: true, shaker: true,
   },
+  // 日系城市流行：明亮的七和弦、鐘琴
+  japan: {
+    bpm: 126,
+    prog: [[41, 57, 60, 64], [43, 55, 59, 62], [40, 55, 59, 64], [45, 57, 60, 64]],
+    bass: 'triangle', bassVol: 0.5, lead: 'triangle', leadVol: 0.12, leadCut: 0,
+    kick: true, snare: true, hat: true, bell: true,
+  },
+  // 南國海港：輕快、沙鈴
+  taiwan: {
+    bpm: 116,
+    prog: [[43, 55, 59, 62], [48, 55, 60, 64], [45, 57, 60, 64], [50, 57, 62, 66]],
+    bass: 'sine', bassVol: 0.55, lead: 'triangle', leadVol: 0.13, leadCut: 0,
+    kick: true, snare: false, hat: true, shaker: true,
+  },
   space: {
     bpm: 122,
     prog: [[45, 57, 64, 69], [41, 57, 60, 65], [43, 55, 62, 67], [40, 52, 59, 64]],
@@ -433,6 +447,18 @@ export class Sfx {
       case 'pandas':
         for (let i = 0; i < 2; i++) this.tone(700, 0.15, { type: 'triangle', vol: 0.06, slide: 300, delay: i * 0.22 });
         break;
+      case 'metro':
+        // 電車警笛：短促的電子喇叭
+        this.tone(698, 0.5, { type: 'square', vol: 0.05, cut: 2400 });
+        this.tone(880, 0.5, { type: 'square', vol: 0.04, cut: 2400 });
+        break;
+      case 'tram':
+        // 輕軌的叮叮鈴
+        for (let i = 0; i < 2; i++) {
+          this.tone(1568, 0.5, { vol: 0.08, delay: i * 0.25 });
+          this.tone(2350, 0.4, { vol: 0.03, delay: i * 0.25 });
+        }
+        break;
       default:
         this.horn();
     }
@@ -684,7 +710,7 @@ export class Sfx {
     this.theme = id;
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
-    const wet = { city: 0.08, seaside: 0.05, tunnel: 0.55, snow: 0.14, neon: 0.2, desert: 0.12, sakura: 0.18, jungle: 0.12, volcano: 0.22, space: 0.35, underwater: 0.6, candy: 0.1, dino: 0.15, halloween: 0.35, skycity: 0.12, bamboo: 0.2 }[id] ?? 0.1;
+    const wet = { city: 0.08, seaside: 0.05, tunnel: 0.55, snow: 0.14, neon: 0.2, desert: 0.12, sakura: 0.18, jungle: 0.12, volcano: 0.22, space: 0.35, underwater: 0.6, candy: 0.1, dino: 0.15, halloween: 0.35, skycity: 0.12, bamboo: 0.2, japan: 0.45, taiwan: 0.06 }[id] ?? 0.1;
     this.reverbSend.gain.setTargetAtTime(wet, t, instant ? 0.01 : 0.8);
     this.nextStyle = MUSIC[id] || MUSIC.city;
     if (instant) this.style = this.nextStyle;
@@ -801,6 +827,20 @@ export class Sfx {
       case 'bamboo': {
         const rustle = noiseLayer('highpass', 3000, 0.5, 0.02);
         lfo(0.2, 0.015, rustle.g.gain);
+        break;
+      }
+      case 'japan': {
+        // 地下的低鳴與空調聲
+        noiseLayer('lowpass', 160, 0.7, 0.1);
+        noiseLayer('bandpass', 2500, 0.8, 0.008);
+        break;
+      }
+      case 'taiwan': {
+        // 蟬鳴 + 海風
+        const bugs = noiseLayer('bandpass', 4800, 7, 0.035);
+        lfo(26, 0.03, bugs.g.gain);
+        const sea = noiseLayer('bandpass', 600, 0.4, 0.05);
+        lfo(0.12, 0.04, sea.g.gain);
         break;
       }
       case 'space': {
@@ -937,6 +977,28 @@ export class Sfx {
         // 竹子互相敲擊
         for (let i = 0; i < 3; i++) this.tone(rand(700, 1100), 0.08, { type: 'triangle', vol: 0.05, delay: i * rand(0.1, 0.25), dest: amb });
         return rand(3, 7);
+      case 'japan':
+        if (Math.random() < 0.5) {
+          // 發車旋律
+          [76, 79, 84, 83, 79, 81, 84].forEach((m, i) => this.tone(mtof(m), 0.28, { type: 'triangle', vol: 0.04, delay: i * 0.16, dest: this.sfxBus }));
+        } else {
+          // 車門關閉的叮咚聲
+          this.tone(mtof(81), 0.6, { vol: 0.06, dest: this.sfxBus });
+          this.tone(mtof(77), 0.9, { vol: 0.06, delay: 0.35, dest: this.sfxBus });
+        }
+        return rand(6, 11);
+      case 'taiwan':
+        if (Math.random() < 0.25) {
+          // 垃圾車的《給愛麗絲》
+          [76, 75, 76, 75, 76, 71, 74, 72, 69].forEach((m, i) => this.tone(mtof(m), 0.2, { type: 'square', vol: 0.02, delay: i * 0.2, dest: amb, cut: 2200 }));
+        } else if (Math.random() < 0.5) {
+          // 海鷗
+          this.tone(1500, 0.35, { type: 'sawtooth', vol: 0.016, slide: -600, dest: amb, cut: 3000, attack: 0.04 });
+        } else {
+          // 遠方機車聲
+          this.tone(95, 1.6, { type: 'sawtooth', vol: 0.03, slide: 60, dest: amb, cut: 500, attack: 0.3 });
+        }
+        return rand(4, 8);
       case 'space': {
         // 通訊嗶嗶聲
         const n = 2 + ((Math.random() * 4) | 0);
