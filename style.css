@@ -1832,7 +1832,7 @@ kbd {
   z-index: 3;
 }
 
-.pop {
+.fpop {
   position: absolute;
   left: 0;
   top: 0;
@@ -1845,12 +1845,12 @@ kbd {
   animation: pop-up 0.9s ease-out forwards;
 }
 
-.pop.hot {
+.fpop.hot {
   color: #ff7b5a;
   font-size: 24px;
 }
 
-.pop.token {
+.fpop.token {
   color: #ffe08a;
   font-family: var(--body);
   font-weight: 900;

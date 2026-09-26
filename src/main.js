@@ -724,7 +724,7 @@ function updateExtraHud() {
 // 畫面中央往上飄的小字
 function pop(text, cls = '') {
   const el = document.createElement('div');
-  el.className = `pop ${cls}`;
+  el.className = `fpop ${cls}`;
   el.textContent = text;
   $('pops').appendChild(el);
   setTimeout(() => el.remove(), 900);
