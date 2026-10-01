@@ -320,6 +320,54 @@ export class Sfx {
     this.burst(0.14, { vol: 0.2, freq: 300, q: 0.7, type: 'lowpass' });
   }
 
+  // 彈跳床「啵嗡」
+  boing() {
+    this.tone(180, 0.5, { type: 'triangle', vol: 0.2, slide: 520 });
+    this.tone(360, 0.35, { type: 'sine', vol: 0.08, slide: 700, delay: 0.03 });
+  }
+
+  // 抓住滑索：金屬摩擦聲
+  zip() {
+    this.burst(1.4, { vol: 0.12, freq: 2600, q: 3, sweep: -1200, attack: 0.05 });
+    this.tone(900, 0.2, { type: 'square', vol: 0.03, cut: 2000 });
+  }
+
+  // 磨軌的火花聲（每小段呼叫一次）
+  grind() {
+    this.burst(0.08, { vol: 0.07, freq: rand(3500, 5200), q: 2.5 });
+  }
+
+  bossRoar() {
+    this.tone(90, 1.4, { type: 'sawtooth', vol: 0.12, slide: -40, cut: 700, attack: 0.1 });
+    this.tone(135, 1.4, { type: 'square', vol: 0.05, slide: -60, cut: 900, attack: 0.1 });
+    this.burst(1.2, { vol: 0.2, freq: 260, q: 0.6, type: 'lowpass', attack: 0.1 });
+  }
+
+  bossThrow() {
+    this.tone(600, 0.3, { type: 'square', vol: 0.04, slide: -400, cut: 2400 });
+  }
+
+  orbFire() {
+    this.tone(500, 0.35, { type: 'sawtooth', vol: 0.06, slide: 1800, cut: 4000 });
+    this.burst(0.3, { vol: 0.08, freq: 3000, q: 1.2, sweep: 2000 });
+  }
+
+  bossHit() {
+    this.tone(140, 0.3, { vol: 0.35, slide: -80 });
+    this.burst(0.35, { vol: 0.25, freq: 1200, q: 0.7 });
+    [988, 1319].forEach((f, i) => this.tone(f, 0.15, { type: 'square', vol: 0.05, delay: 0.05 + i * 0.06 }));
+  }
+
+  bossDefeat() {
+    this.burst(1.6, { vol: 0.4, freq: 300, q: 0.5, type: 'lowpass' });
+    [72, 76, 79, 84, 88, 91].forEach((m, i) => this.tone(mtof(m), 0.4, { type: 'triangle', vol: 0.12, delay: 0.3 + i * 0.09 }));
+  }
+
+  chest() {
+    for (let i = 0; i < 6; i++) this.tone(400 + i * 120, 0.08, { type: 'square', vol: 0.04, delay: i * 0.07, cut: 2400 });
+    [84, 88, 91, 96].forEach((m, i) => this.tone(mtof(m), 0.5, { type: 'triangle', vol: 0.1, delay: 0.5 + i * 0.07 }));
+  }
+
   tutorialStep() {
     this.tone(1047, 0.12, { type: 'triangle', vol: 0.14 });
     this.tone(1568, 0.25, { type: 'triangle', vol: 0.12, delay: 0.08 });

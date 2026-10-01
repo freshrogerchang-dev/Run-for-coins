@@ -39,6 +39,10 @@ const POOL = [
   { key: 'combo', text: (n) => `單場金幣連擊達到 ${n}`, ns: [15, 25, 40], single: true },
   { key: 'boosts', text: (n) => `踩加速帶 ${n} 次`, ns: [3, 6, 10] },
   { key: 'giantSmash', text: (n) => `用巨人蘑菇撞飛 ${n} 個障礙`, ns: [3, 6, 10] },
+  { key: 'bosses', text: (n) => `打倒魔王 ${n} 次`, ns: [1, 2, 3] },
+  { key: 'grind', text: (n) => `在欄杆上磨軌 ${n} 公尺`, ns: [40, 80, 150] },
+  { key: 'zips', text: (n) => `用滑索 ${n} 次`, ns: [1, 2, 4] },
+  { key: 'trampolines', text: (n) => `踩彈跳床 ${n} 次`, ns: [2, 4, 6] },
 ];
 // 「單場最佳」類型：記錄最大值而不是累加
 const SINGLE = { run: 'bestRun', combo: 'maxCombo' };
@@ -103,6 +107,10 @@ export const ACHIEVEMENTS = [
   { id: 'combo100', name: '連擊大師', desc: '單場金幣連擊達到 100', stat: 'maxCombo', goal: 100, reward: 800 },
   { id: 'boost50', name: '加速狂', desc: '累積踩 50 次加速帶', stat: 'boosts', goal: 50, reward: 400 },
   { id: 'giant50', name: '巨人來了', desc: '用巨人蘑菇撞飛 50 個障礙', stat: 'giantSmash', goal: 50, reward: 500 },
+  { id: 'boss10', name: '魔王剋星', desc: '打倒魔王 10 次', stat: 'bosses', goal: 10, reward: 1000 },
+  { id: 'grind1k', name: '磨軌達人', desc: '在欄杆上累積磨軌 1,000 公尺', stat: 'grind', goal: 1000, reward: 500 },
+  { id: 'zip30', name: '空中飛人', desc: '累積用滑索 30 次', stat: 'zips', goal: 30, reward: 400 },
+  { id: 'album30', name: '收藏家', desc: '圖鑑收集 30 個', stat: 'albumPieces', goal: 30, reward: 800 },
   { id: 'pets', name: '寵物之家', desc: `擁有全部 ${PETS.length} 隻寵物`, stat: 'pets', goal: PETS.length, reward: 1000 },
 ];
 

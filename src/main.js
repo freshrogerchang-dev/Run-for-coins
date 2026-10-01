@@ -4,7 +4,9 @@ import { Stage } from './stage.js';
 import { Models } from './models.js';
 import { Environment } from './environment.js';
 import { Player } from './player.js';
-import { Level } from './level.js';
+import { Level, setLevelRng } from './level.js';
+import { Boss } from './boss.js';
+import { Ghost } from './ghost.js';
 import { Sfx } from './audio.js';
 import { THEMES, THEME_ORDER } from './themes.js';
 import { PowerupModels } from './powerups.js';
@@ -31,6 +33,43 @@ import {
   ownedBoards,
   activeBoard,
 } from './events.js';
+import {
+  keys,
+  give,
+  rewardLabel,
+  PASS_LEVELS,
+  XP_PER_LEVEL,
+  seasonInfo,
+  passReward,
+  passState,
+  passLevel,
+  addPassXp,
+  charLevel,
+  charProgress,
+  addCharXp,
+  charPerk,
+  perkText,
+  CHAR_MAX,
+  ALBUM,
+  albumGot,
+  albumCount,
+  ALBUM_TOTAL,
+  ALBUM_REWARD,
+  nextAlbumPiece,
+  collectAlbum,
+  CHEST_PRICE,
+  EFFECTS,
+  RARITY,
+  ownedEffects,
+  equipped,
+  equip,
+  openChest,
+  dailyChallenge,
+  recordDaily,
+  DAILY_TARGET,
+  DAILY_CH_REWARD,
+  seeded,
+} from './season.js';
 import {
   Meta,
   CHARACTERS,
@@ -84,7 +123,7 @@ async function waitFonts() {
   if (!document.fonts) return;
   // 中文字型依字元分包下載：先把畫在 Canvas 上的字都載好，招牌才不會用到備用字型
   const canvasText =
-    '金幣大道站酷跑拉麵卡拉咖啡壽司珍珠奶茶滷肉飯雞排豆花鹽酥刈包港輕軌急行各停星見台海風山桜町月島橋福花貝餅糖楓禮衝飛磁跳盾慢雨巨板';
+    '金幣大道站酷跑拉麵卡拉咖啡壽司珍珠奶茶滷肉飯雞排豆花鹽酥刈包港輕軌急行各停星見台海風山桜町月島橋福花貝餅糖楓禮衝飛磁跳盾慢雨巨板寶電危險安全通道';
   const timeout = new Promise((r) => setTimeout(r, 2500));
   await Promise.race([
     Promise.all([
@@ -125,12 +164,12 @@ pet.set(activePet());
 const aura = new SpeedAura(stage.scene, player);
 const warnings = new LaneWarnings(stage.scene);
 player.setBoardStyle(activeBoard());
+aura.setStyle(equipped('aura'), equipped('trail'));
+const boss = new Boss(stage.scene);
+const ghost = new Ghost(stage.scene, OUTFITS[0]);
+const projectiles = [];
 const NO_RAIN = ['tunnel', 'space', 'snow', 'volcano', 'japan'];
 
-const JUMP_V = Math.sqrt(2 * GRAVITY * JUMP_HEIGHT);
-const JUMP_V_SPRING = Math.sqrt(2 * GRAVITY * 4.6);
-const JUMP_V_FOX = Math.sqrt(2 * GRAVITY * 2.6);
-const JUMP_V_BOUNCE = Math.sqrt(2 * GRAVITY * 3.7);
 const buzz = (ms) => {
   try {
     navigator.vibrate?.(ms);
@@ -143,6 +182,12 @@ const JET_Y = 8.2;
 const POWER_KEYS = ['dash', 'jetpack', 'magnet', 'double', 'spring', 'shield', 'slowmo', 'giant'];
 const SLOW_MULT = 0.62;
 const GIANT_MULT = 1.2;
+// 角色能力（隨角色等級成長）
+const perk = () => charPerk(charId);
+// 每日挑戰的特殊規則
+const rule = () => S.daily?.rule.id;
+const gravity = () => GRAVITY * (rule() === 'lowgrav' ? 0.6 : 1);
+const runScene = () => (S.daily ? S.daily.scene : S.scene);
 // 目前所有道具加總的奔跑速度倍率
 const speedMult = () =>
   (S.power.dash > 0 ? DASH_MULT : 1) * (S.power.slowmo > 0 ? SLOW_MULT : 1) * (S.power.giant > 0 ? GIANT_MULT : 1);
@@ -238,16 +283,34 @@ function resetRun() {
     tut: null,
     crashVehicle: null,
     crashMoving: false,
+    zip: null,
+    grinding: false,
+    grindAcc: 0,
+    grindSfx: 0,
+    bossNext: 1100,
+    bosses: 0,
+    albumAt: -300,
   });
   chaser.reset();
+  boss.active = false;
+  boss.group.visible = false;
+  for (const p of projectiles) stage.scene.remove(p.sprite);
+  projectiles.length = 0;
+  $('bossBar').hidden = true;
+  // 每日挑戰：固定種子的跑道與特殊規則
+  setLevelRng(S.daily ? seeded(S.daily.seed) : null);
+  level.noPowerups = rule() === 'magnet' || rule() === 'nopower';
+  level.noPads = rule() === 'nopower';
+  level.extraDifficulty = rule() === 'coins2' ? 0.35 : 0;
+  ghost.startRecording();
   $('tutHint').hidden = true;
   stage.setStorm(false);
   sfx.setRain(0);
-  S.stage = S.scene === 'tour' ? null : STAGES.find((st) => st.scene === S.scene) || null;
+  S.stage = S.scene === 'tour' || S.daily ? null : STAGES.find((st) => st.scene === S.scene) || null;
   player.setPower({ jetpack: false, spring: false, shield: false, magnet: false });
   player.root.visible = true;
   sfx.setJet(false);
-  env.setMode(S.scene);
+  env.setMode(runScene());
   env.reset();
   syncTheme(true);
   level.reset(0);
@@ -375,7 +438,7 @@ function tutGate(action) {
 
 // ---------- 動作 ----------
 function moveLane(dir) {
-  if (S.mode !== 'playing') return;
+  if (S.mode !== 'playing' || S.zip) return;
   if (!tutGate('lane')) return;
   const next = clamp(S.lane + dir, 0, 2);
   if (next === S.lane) {
@@ -392,11 +455,11 @@ function moveLane(dir) {
 
 function jump() {
   if (S.mode !== 'playing') return;
-  if (S.power.jetpack > 0) return;
+  if (S.power.jetpack > 0 || S.zip) return;
   if (!tutGate('jump')) return;
   const bt = S.board > 0 ? S.boardType : null;
   if (S.grounded) {
-    S.vy = S.power.spring > 0 ? JUMP_V_SPRING : bt === 'bouncer' ? JUMP_V_BOUNCE : charId === 'fox' ? JUMP_V_FOX : JUMP_V;
+    S.vy = Math.sqrt(2 * gravity() * (S.power.spring > 0 ? 4.6 : bt === 'bouncer' ? 3.7 : charId === 'fox' ? perk().jump : JUMP_HEIGHT));
     S.grounded = false;
     S.slideT = 0;
     S.airJumps = bt === 'double' ? 1 : 0;
@@ -406,7 +469,7 @@ function jump() {
   } else if (S.airJumps > 0 && S.board > 0) {
     // 二段跳板：空中再跳一次
     S.airJumps--;
-    S.vy = JUMP_V * 0.95;
+    S.vy = Math.sqrt(2 * gravity() * JUMP_HEIGHT) * 0.95;
     S.squash = -0.14;
     sfx.jump();
     stage.burst(new THREE.Vector3(S.x, S.y, S.z), 10);
@@ -417,7 +480,7 @@ function jump() {
 }
 
 function slide() {
-  if (S.mode !== 'playing' || S.power.jetpack > 0) return;
+  if (S.mode !== 'playing' || S.power.jetpack > 0 || S.zip) return;
   if (!tutGate('slide')) return;
   if (S.grounded) {
     S.slideT = SLIDE_TIME;
@@ -467,8 +530,8 @@ function activatePower(kind) {
   const dur =
     powerDuration(kind) +
     (activePet() === 'kitten' && (kind === 'magnet' || kind === 'double') ? 3 : 0) +
-    (charId === 'kid' && kind === 'dash' ? 1 : 0) +
-    (charId === 'girl' && kind === 'magnet' ? 3 : 0);
+    (kind === 'dash' ? perk().dash : 0) +
+    (kind === 'magnet' ? perk().magnet : 0);
   S.power[kind] = dur;
   S.powerMax[kind] = dur;
   sfx.powerup(kind);
@@ -585,6 +648,14 @@ function smashOrVault(o) {
 
 // 撞擊處理：回傳 true 表示這一步要停止（撞車或側撞）
 function hit(o, side, prevX) {
+  // 分岔路線的分隔欄：只會彈回原本的車道
+  if (o.kind === 'divider') {
+    S.lane = S.prevLane;
+    S.x = prevX;
+    S.shake = Math.max(S.shake, 0.15);
+    sfx.bump();
+    return true;
+  }
   if (S.power.dash > 0 || S.power.giant > 0 || S.invuln > 0 || S.vaulting > 0) {
     smashOrVault(o);
     return false;
@@ -639,7 +710,7 @@ function hit(o, side, prevX) {
 function collectCoin(c) {
   c.taken = true;
   c.magnet = false;
-  const n = S.power.double > 0 ? 2 : 1;
+  const n = (c.value || 1) * (S.power.double > 0 ? 2 : 1) * (rule() === 'coins2' ? 2 : 1);
   const before = S.coins;
   S.coins += n;
   meta.track('coins', n);
@@ -667,6 +738,15 @@ function collectCoin(c) {
 level.onGap = (z, room) => {
   if (S.mode !== 'playing' || S.tut) return;
   const lane = (Math.random() * 3) | 0;
+  // 圖鑑收集品：每個場景三個，很少出現
+  const sceneHere = env.themeAt(z);
+  const piece = nextAlbumPiece(sceneHere);
+  if (piece >= 0 && S.distance - S.albumAt > 450 && Math.random() < 0.3 && !level.items.some((it) => it.kind === 'album' && !it.taken)) {
+    level.addItem('album', '寶', '#ffb000', '#6a3200', lane, z - room / 2);
+    Object.assign(level.items[level.items.length - 1], { albumScene: sceneHere, albumIdx: piece });
+    S.albumAt = S.distance;
+    return;
+  }
   const L = nextLetter();
   if (L && !S.letterPending && S.distance - S.letterAt > 260 && Math.random() < 0.35) {
     level.addItem('letter', L, '#7b3fe4', '#ffffff', lane, z - room / 2, '"Fredoka", sans-serif');
@@ -711,6 +791,109 @@ function collectLetterItem(it) {
     flash(`字母「${res.letter}」！還差 ${w.word.length - w.got} 個`);
   }
   updateExtraHud();
+}
+
+// ---------- 魔王追逐戰 ----------
+function startBoss() {
+  boss.start(S.distance > 4000 ? 5 : 4);
+  S.bossNext = Infinity;
+  sfx.bossRoar();
+  S.shake = Math.max(S.shake, 0.4);
+  showBanner('魔王來了！', '撿藍色的「電」能量球就會自動攻擊魔王，小心牠丟下來的柵欄！');
+  $('bossBar').hidden = false;
+  updateBossBar();
+}
+
+function updateBossBar() {
+  $('bossHp').style.transform = `scaleX(${Math.max(0, boss.hp / boss.maxHp)})`;
+}
+
+function endBoss(win) {
+  boss.leave();
+  $('bossBar').hidden = true;
+  S.bossNext = S.distance + 1600;
+  if (!win) flash('魔王逃走了…下次再打倒牠！');
+}
+
+function defeatBoss() {
+  S.bosses++;
+  meta.track('bosses');
+  S.bonus += 1500;
+  level.addCoinRain(S.z - 15, 60);
+  stage.burst(boss.group.position.clone().setY(5), 60);
+  S.shake = Math.max(S.shake, 0.6);
+  S.hitStop = 0.2;
+  confetti();
+  showBanner('打倒魔王！', `+${(1500 * S.mult).toLocaleString()} 分，還有一場金幣雨`);
+  sfx.bossDefeat();
+  buzz(120);
+  endBoss(true);
+}
+
+// 魔王丟柵欄：落點附近有其他障礙就不丟，避免出現過不去的組合
+function bossThrow({ lane, z }) {
+  const blocked = level.obstacles.some((o) => !o.decorative && (o.lane === lane || o.kind === 'divider') && o.zFront > z - 9 && o.zFront - o.length < z + 9);
+  if (blocked) return;
+  level.addBarrier(Math.random() < 0.5 ? 'low' : 'high', lane, z);
+  sfx.bossThrow();
+  stage.burst(new THREE.Vector3(LANES[lane], 1, z), 16);
+}
+
+function spawnOrb() {
+  level.addItem('orb', '電', '#1f9bff', '#ffffff', (Math.random() * 3) | 0, S.z - 55);
+}
+
+// 撿到能量球：發射追蹤光球打魔王
+function fireOrb(it) {
+  sfx.orbFire();
+  if (!boss.active || boss.leaving) {
+    S.bonus += 100;
+    pop(`+${100 * S.mult}`);
+    return;
+  }
+  const sprite = new THREE.Sprite(it.mesh.material);
+  sprite.scale.setScalar(1.1);
+  sprite.position.set(S.x, S.y + 1.2, S.z);
+  stage.scene.add(sprite);
+  projectiles.push({ sprite, t: 0, from: sprite.position.clone() });
+}
+
+const projTarget = new THREE.Vector3();
+function updateProjectiles(dt) {
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    const p = projectiles[i];
+    p.t += dt / 0.45;
+    projTarget.copy(boss.group.position).setY(boss.group.position.y + 4.8);
+    const k = Math.min(1, p.t);
+    p.sprite.position.lerpVectors(p.from, projTarget, k * k);
+    p.sprite.position.y += Math.sin(k * Math.PI) * 2;
+    if (p.t < 1) continue;
+    stage.scene.remove(p.sprite);
+    projectiles.splice(i, 1);
+    if (!boss.active || boss.leaving) continue;
+    boss.hit();
+    sfx.bossHit();
+    S.shake = Math.max(S.shake, 0.3);
+    stage.burst(projTarget, 30);
+    pop('命中！', 'hot');
+    updateBossBar();
+    if (boss.hp <= 0) defeatBoss();
+  }
+}
+
+// ---------- 圖鑑 ----------
+function collectAlbumItem(it) {
+  const res = collectAlbum(it.albumScene, it.albumIdx);
+  if (!res) return;
+  sfx.achievement();
+  meta.track('albumPieces');
+  stage.burst(it.mesh.position, 30);
+  showNote({ type: 'ach', text: `圖鑑：${res.sceneName}「${res.name}」（${res.count}/${res.total}）` });
+  if (res.complete) {
+    showNote({ type: 'daily', text: `集滿${res.sceneName}的圖鑑！${rewardLabel(ALBUM_REWARD)}` });
+    confetti();
+    updateBoardBtn();
+  }
 }
 
 function updateExtraHud() {
@@ -766,6 +949,11 @@ function sideBump(prevX) {
 function stepPlaying(dt) {
   S.runTime += dt;
   S.speed = Math.min(MAX_SPEED, START_SPEED + S.distance * SPEED_GAIN);
+  if (rule() === 'turbo') S.speed = Math.max(S.speed, START_SPEED + (MAX_SPEED - START_SPEED) * 0.75);
+  if (rule() === 'magnet') S.power.magnet = S.powerMax.magnet = 9;
+  ghost.record(dt, S);
+  // 魔王出現
+  if (!boss.active && !S.tut && S.distance >= S.bossNext) startBoss();
   level.difficulty = Math.min(1, S.distance / 1800);
   level.runDist = S.distance;
   if (S.tut) updateTutorial();
@@ -793,11 +981,32 @@ function stepPlaying(dt) {
   updateWeather(dt);
   S.x = damp(S.x, LANES[S.lane], 16, dt);
 
-  const flying = S.power.jetpack > 0;
-  if (flying) {
-    S.vy = (JET_Y - S.y) * 4;
+  // 滑索：經過起點就抓住，掛在鋼索下滑到終點
+  if (!S.zip && S.power.jetpack <= 0) {
+    for (const zp of level.zips) {
+      if (zp.used || Math.abs(S.x - zp.x) > 1.2 || !(prevZ > zp.z0 && S.z <= zp.z0)) continue;
+      zp.used = true;
+      zp.handle.visible = false;
+      S.zip = zp;
+      S.lane = zp.lane;
+      S.slideT = 0;
+      sfx.zip();
+      flash('抓住滑索！');
+      meta.track('zips');
+      break;
+    }
+  }
+  if (S.zip && S.z <= S.zip.z1) {
+    S.zip = null;
+    S.invuln = Math.max(S.invuln, 0.9);
     S.grounded = false;
-  } else if (!S.grounded) S.vy -= GRAVITY * dt;
+    S.vy = 2;
+  }
+  const flying = S.power.jetpack > 0 || !!S.zip;
+  if (flying) {
+    S.vy = ((S.zip ? 5.3 : JET_Y) - S.y) * 4;
+    S.grounded = false;
+  } else if (!S.grounded) S.vy -= gravity() * dt;
   S.y += S.vy * dt;
   S.slideT = Math.max(0, S.slideT - dt);
   S.jumpBuffer = Math.max(0, S.jumpBuffer - dt);
@@ -808,6 +1017,7 @@ function stepPlaying(dt) {
   const zMax = prevZ + PLAYER_HALF_D;
   let support = GROUND;
   let onTrain = false;
+  let onRail = false;
 
   for (const o of flying ? [] : [...level.obstacles]) {
     const oz0 = o.zFront - o.length;
@@ -817,11 +1027,16 @@ function stepPlaying(dt) {
     if (Math.abs(S.x - o.x) >= reach) continue;
     const wasOver = Math.abs(prevX - o.x) < reach - 0.02;
 
-    if (o.kind === 'train' || o.kind === 'ramp') {
+    if (o.kind === 'divider') {
+      if (!wasOver && hit(o, true, prevX)) return;
+    } else if (o.kind === 'train' || o.kind === 'ramp' || o.kind === 'rail') {
       const top = level.heightAt(o, S.z);
       const tol = o.kind === 'ramp' ? 1.1 : 0.55;
       if (prevY >= top - tol) {
-        if (top >= support) onTrain = top > GROUND + 0.3;
+        if (top >= support) {
+          onTrain = top > GROUND + 0.3 && o.kind !== 'rail';
+          onRail = o.kind === 'rail';
+        }
         support = Math.max(support, top);
       } else if (hit(o, !wasOver, prevX)) {
         return;
@@ -852,6 +1067,40 @@ function stepPlaying(dt) {
     }
   } else if (!flying && S.grounded && S.y > support + 0.02) {
     S.grounded = false; // 從車頂邊緣掉下
+  }
+
+  // 磨軌：火花、加分
+  S.grinding = onRail && S.grounded;
+  if (S.grinding) {
+    S.grindAcc += runSpeed * dt;
+    S.bonus += runSpeed * dt * 3;
+    if (Math.random() < 0.6) stage.burst(new THREE.Vector3(S.x, S.y, S.z + 0.3), 1);
+    S.grindSfx -= dt;
+    if (S.grindSfx <= 0) {
+      S.grindSfx = 0.09;
+      sfx.grind();
+    }
+    if (S.grindAcc >= 10) {
+      meta.track('grind', Math.floor(S.grindAcc));
+      S.grindAcc -= Math.floor(S.grindAcc);
+    }
+  }
+
+  // 彈跳床
+  for (const sp of level.springs) {
+    if (sp.used || Math.abs(sp.x - S.x) > 1.1 || flying) continue;
+    if (sp.z > zMax + 1.1 || sp.z < zMin - 1.1 || S.y > GROUND + 0.7) continue;
+    sp.used = true;
+    sp.t = 0.3;
+    const g = gravity();
+    S.vy = Math.sqrt(2 * g * 7);
+    S.grounded = false;
+    S.slideT = 0;
+    S.invuln = Math.max(S.invuln, (2 * S.vy) / g + 0.3);
+    S.squash = -0.25;
+    sfx.boing();
+    buzz(20);
+    meta.track('trampolines');
   }
 
   // 吃金幣（磁鐵會把附近的金幣吸過來）
@@ -895,6 +1144,8 @@ function stepPlaying(dt) {
     if (it.y < S.y - 0.6 || it.y > S.y + h + 0.9) continue;
     it.taken = true;
     if (it.kind === 'token') collectToken(it);
+    else if (it.kind === 'orb') fireOrb(it);
+    else if (it.kind === 'album') collectAlbumItem(it);
     else collectLetterItem(it);
   }
 
@@ -904,7 +1155,7 @@ function stepPlaying(dt) {
     if (pad.z > zMax + 1.6 || pad.z < zMin - 1.6) continue;
     if (S.y > (S.floorY ?? GROUND) + 0.6) continue;
     pad.used = true;
-    const t = Math.max(S.power.dash, charId === 'kid' ? 2.6 : 1.6);
+    const t = Math.max(S.power.dash, 1.6 + perk().dash);
     S.power.dash = t;
     S.powerMax.dash = Math.max(S.powerMax.dash, t);
     sfx.boost();
@@ -1150,6 +1401,24 @@ function showCombo(text, big = false) {
 }
 
 function updateHud() {
+  const gh = S.ghostLead;
+  const gEl = $('ghostHud');
+  gEl.hidden = !gh;
+  if (gh) {
+    if (S.distance > gh.best) {
+      gEl.textContent = '超越最佳紀錄！';
+      gEl.className = 'ghost-hud win';
+      if (!ghost.passed) {
+        ghost.passed = true;
+        pop('超越影子！', 'hot');
+        sfx.milestone();
+      }
+    } else {
+      const d = Math.round(gh.lead);
+      gEl.textContent = d > 0 ? `影子領先 ${d} m` : `你領先影子 ${-d} m`;
+      gEl.className = `ghost-hud ${d > 0 ? '' : 'win'}`;
+    }
+  }
   if (S.combo >= 5 && S.runTime - S.lastCoinT < 0.1 && S.combo % 10) showCombo(`連擊 ×${S.combo}`);
   const onBoard = S.board > 0;
   if (boardEl.hidden === onBoard) boardEl.hidden = !onBoard;
@@ -1234,7 +1503,7 @@ function clearStage(st) {
 
 // ---------- 續跑 ----------
 // 機器人波特：續跑費用減半
-const reviveCost = () => 150 * 2 ** S.revives * (charId === 'robot' ? 0.5 : 1);
+const reviveCost = () => Math.round(150 * 2 ** S.revives * perk().revive);
 const canRevive = () => S.revives < 2 && store.get('bank', 0) + S.coins >= reviveCost();
 
 function offerRevive() {
@@ -1286,6 +1555,13 @@ function refreshMenuBadges() {
   $('missionCount').textContent = `${meta.daily.missions.filter((m) => m.done).length}/3`;
   $('achCount').textContent = `${meta.ach.length}/${ACHIEVEMENTS.length}`;
   $('charCount').textContent = `${ownedCharacters().length}/${CHARACTERS.length}`;
+  $('passCount').textContent = `Lv ${passLevel(passState().xp)}`;
+  $('albumCount').textContent = `${albumCount()}/${ALBUM_TOTAL}`;
+  $('keyCount').textContent = `鑰匙 ${keys()}`;
+  const dc = dailyChallenge();
+  $('dailyName').textContent = `每日挑戰：${dc.rule.name}`;
+  $('dailyInfo').textContent = `${THEMES[dc.scene].name}・${dc.rule.desc}`;
+  $('dailyBest').textContent = dc.state.done ? '✓ 完成' : dc.state.best ? `${dc.state.bestDist}/${DAILY_TARGET} m` : `${DAILY_TARGET} m`;
   // 季節活動入口
   const ev = currentEvent();
   const btn = $('eventBtn');
@@ -1355,10 +1631,12 @@ function renderPanel() {
       const active = c.id === charId;
       return `<button type="button" class="char ${has ? '' : 'locked'}" aria-pressed="${active}" data-char="${c.id}">
         <i class="char-face char-${c.id}" aria-hidden="true"></i>
-        <strong>${c.name}</strong><span>${c.desc}</span><em class="perk">${c.perk}</em>
+        <strong>${c.name} <b class="lv">Lv ${charLevel(c.id)}</b></strong><span>${c.desc}</span><em class="perk">${perkText(c.id)}</em>
+        <span class="lvbar"><i style="transform: scaleX(${charProgress(c.id).p})"></i></span>
         <small>${active ? '使用中' : has ? '選擇' : `${c.price.toLocaleString()} 金幣解鎖`}</small>
       </button>`;
     }).join('')}</div>
+    <p class="panel-hint">角色越常用等級越高（最高 ${CHAR_MAX} 級），能力會跟著變強；5 級開局有護盾，10 級開局就衝刺。</p>
     <h3 class="panel-sub">寵物</h3>
     <p class="panel-hint">寵物會跟著你跑，每隻都有一個小能力。再點一次正在用的寵物可以讓牠休息。</p>
     <div class="char-grid">${PETS.map((p) => {
@@ -1381,6 +1659,61 @@ function renderPanel() {
         <small>${active ? '使用中' : open ? '換上' : `未解鎖・${outfitRequirement(o.id)}`}</small>
       </button>`;
     }).join('')}</div>`;
+  } else if (panelTab === 'pass') {
+    const info = seasonInfo();
+    const st = passState();
+    const lv = passLevel(st.xp);
+    const into = lv >= PASS_LEVELS ? 1 : (st.xp % XP_PER_LEVEL) / XP_PER_LEVEL;
+    body.innerHTML = `<div class="pass-head">
+        <div><strong>${info.name}</strong><span>還剩 ${info.daysLeft} 天・每跑一場都會累積經驗</span></div>
+        <b class="num">Lv ${lv}</b>
+      </div>
+      <span class="pass-bar"><i style="transform: scaleX(${into})"></i></span>
+      <p class="panel-hint">經驗 = 距離 ÷ 4 ＋ 金幣 ＋ 打倒魔王 150；每 ${XP_PER_LEVEL} 經驗升一級，獎勵自動領取。30 級可以拿賽季限定光暈。</p>
+      <ol class="pass-list">${Array.from({ length: PASS_LEVELS }, (_, i) => {
+        const n = i + 1;
+        const r = passReward(n);
+        const got = n <= st.claimed;
+        return `<li class="${got ? 'got' : n === lv + 1 ? 'next' : ''} ${n % 5 === 0 ? 'big' : ''}"><b>${n}</b><span>${rewardLabel(r)}</span></li>`;
+      }).join('')}</ol>`;
+  } else if (panelTab === 'album') {
+    const got = albumGot();
+    body.innerHTML = `<p class="panel-hint">每個場景藏著三個金色的「寶」，在那個場景跑步時偶爾會出現。集滿一個場景送 ${rewardLabel(ALBUM_REWARD)}。目前 ${albumCount()} / ${ALBUM_TOTAL}。</p>
+      <ul class="album-list">${THEME_ORDER.map((id) => {
+        const g = got[id] || [];
+        const done = g.length === ALBUM[id].length;
+        return `<li class="${done ? 'done' : ''}" style="--sw: linear-gradient(135deg, ${THEMES[id].swatch[0]}, ${THEMES[id].swatch[1]})">
+          <i class="sw" aria-hidden="true"></i>
+          <div><strong>${THEMES[id].name}</strong><span>${ALBUM[id].map((name, k) => `<em class="${g.includes(k) ? 'on' : ''}">${g.includes(k) ? name : '？？？'}</em>`).join('')}</span></div>
+          <b class="num">${g.length}/${ALBUM[id].length}</b>
+        </li>`;
+      }).join('')}</ul>`;
+  } else if (panelTab === 'gacha') {
+    const owned = ownedEffects();
+    const aur = equipped('aura').id;
+    const trl = equipped('trail').id;
+    const card = (e) => {
+      const has = owned.includes(e.id);
+      const on = e.id === aur || e.id === trl;
+      const col = e.rainbow ? 'linear-gradient(90deg, #ff4d4d, #ffd23f, #3dff7a, #3dd6ff, #b45eff)' : e.color ? `rgb(${e.color.map((c) => Math.min(255, Math.round((c / 4) * 255))).join(',')})` : '#3a3f4a';
+      return `<button type="button" class="fx-card ${has ? '' : 'locked'}" aria-pressed="${on}" data-equip="${e.id}" ${has ? '' : 'disabled'}>
+        <i style="background: ${col}"></i><strong>${e.name}</strong>
+        <small style="color: ${RARITY[e.rarity].color}">${has ? (on ? '使用中' : RARITY[e.rarity].name) : e.seasonOnly ? '賽季 30 級' : '寶箱抽'}</small>
+      </button>`;
+    };
+    body.innerHTML = `<div class="gacha-box">
+        <div class="chest-box small" aria-hidden="true"><i></i></div>
+        <div><strong>扭蛋寶箱</strong><span>抽光暈顏色、跑步足跡特效，也可能抽到金幣或滑板。抽到重複的會換成金幣。</span></div>
+      </div>
+      <div class="gacha-actions">
+        <button type="button" data-chest="coins" class="${store.get('bank', 0) < CHEST_PRICE ? 'poor' : ''}">${CHEST_PRICE} 金幣開一個</button>
+        <button type="button" data-chest="key" class="${keys() <= 0 ? 'poor' : ''}">用鑰匙開（有 ${keys()} 把）</button>
+      </div>
+      <p class="panel-hint">機率：普通 ${RARITY.common.weight}%、稀有 ${RARITY.rare.weight}%、史詩 ${RARITY.epic.weight}%（不含金幣滑板獎）。鑰匙可以從賽季通行證、每日挑戰、圖鑑拿到。</p>
+      <h3 class="panel-sub">衝刺光暈</h3>
+      <div class="fx-grid">${EFFECTS.filter((e) => e.kind === 'aura').map(card).join('')}</div>
+      <h3 class="panel-sub">跑步足跡</h3>
+      <div class="fx-grid">${EFFECTS.filter((e) => e.kind === 'trail').map(card).join('')}</div>`;
   } else if (panelTab === 'events') {
     const ev = currentEvent();
     const w = wordHunt();
@@ -1513,6 +1846,24 @@ ui.panel.addEventListener('click', (e) => {
     sfx.buy();
     renderPanel();
     refreshMenuStats();
+  } else if (t.dataset.chest) {
+    const res = openChest(t.dataset.chest === 'key');
+    if (!res) {
+      sfx.denied();
+      flash(t.dataset.chest === 'key' ? '沒有鑰匙了' : `還差 ${(CHEST_PRICE - store.get('bank', 0)).toLocaleString()} 金幣`);
+      return;
+    }
+    showChest(res);
+    renderPanel();
+    refreshMenuStats();
+    updateBoardBtn();
+  } else if (t.dataset.equip) {
+    const e = EFFECTS.find((x) => x.id === t.dataset.equip);
+    if (!ownedEffects().includes(e.id)) return;
+    sfx.click();
+    equip(e);
+    aura.setStyle(equipped('aura'), equipped('trail'));
+    renderPanel();
   } else if (t.dataset.boardtype) {
     const b = BOARD_TYPES.find((x) => x.id === t.dataset.boardtype);
     const owned = ownedBoards();
@@ -1568,6 +1919,46 @@ $('shopBtn').addEventListener('click', () => openPanel('shop'));
 $('missionsBtn').addEventListener('click', () => openPanel('missions'));
 $('achBtn').addEventListener('click', () => openPanel('achievements'));
 $('charBtn').addEventListener('click', () => openPanel('characters'));
+$('passBtn').addEventListener('click', () => openPanel('pass'));
+$('albumBtn').addEventListener('click', () => openPanel('album'));
+$('gachaBtn').addEventListener('click', () => openPanel('gacha'));
+$('dailyBtn').addEventListener('click', () => {
+  sfx.ensure();
+  sfx.click();
+  S.daily = dailyChallenge();
+  resetRun();
+  startGame();
+});
+
+// ---------- 開寶箱動畫 ----------
+function showChest(res) {
+  const scr = $('chestScreen');
+  const box = $('chestBox');
+  box.classList.remove('open');
+  scr.hidden = false;
+  const rar = RARITY[res.rarity];
+  $('chestRarity').textContent = res.effect ? rar.name : '獎勵';
+  $('chestRarity').style.color = rar.color;
+  $('chestTitle').textContent = '……';
+  $('chestNote').textContent = '';
+  box.style.setProperty('--c', rar.color);
+  sfx.chest();
+  setTimeout(() => {
+    box.classList.add('open');
+    if (res.effect) {
+      $('chestTitle').textContent = res.effect.name;
+      $('chestNote').textContent = res.duplicate ? `已經有了，換成 ${res.duplicate} 金幣` : '到「扭蛋」分頁就能換上';
+      if (!res.duplicate && res.rarity !== 'common') confetti();
+    } else {
+      $('chestTitle').textContent = rewardLabel(res.prize);
+      $('chestNote').textContent = '已經放進你的存款';
+    }
+  }, 650);
+}
+$('chestOk').addEventListener('click', () => {
+  sfx.click();
+  $('chestScreen').hidden = true;
+});
 $('eventBtn').addEventListener('click', () => {
   sfx.ensure();
   sfx.click();
@@ -1667,11 +2058,18 @@ function flash(msg) {
 
 function startGame(forceTutorial = false) {
   sfx.ensure();
-  if (!ui.login.hidden || !$('resetScreen').hidden) return;
+  if (!ui.login.hidden || !$('resetScreen').hidden || !$('chestScreen').hidden) return;
   if (S.mode === 'over') resetRun();
   S.mode = 'playing';
   // 第一次玩（或從選單重看）先跑教學
-  if (forceTutorial === true || !store.get('tutorial', false)) startTutorial();
+  if (!S.daily && (forceTutorial === true || !store.get('tutorial', false))) startTutorial();
+  // 影子對手：載入這個場景（或今天的每日挑戰）的最佳紀錄
+  if (S.tut) ghost.data = null;
+  else ghost.load(ghostKey());
+  if (S.daily) {
+    const r = S.daily.rule;
+    setTimeout(() => showBanner(`每日挑戰：${r.name}`, `${r.desc}。跑到 ${DAILY_TARGET} 公尺拿 ${rewardLabel(DAILY_CH_REWARD)}`), 400);
+  }
   sfx.startChime();
   sfx.whistle();
   setTimeout(() => sfx.bark(), 500);
@@ -1688,6 +2086,13 @@ function startGame(forceTutorial = false) {
     S.power.dash = S.powerMax.dash = 3;
     setTimeout(() => sfx.dash(), 300);
   }
+  // 角色等級：5 級開局護盾、10 級開局衝刺
+  if (!S.tut) {
+    const pk = perk();
+    if (pk.startShield) S.power.shield = S.powerMax.shield = Math.max(S.power.shield, pk.startShield);
+    if (pk.startDash) S.power.dash = S.powerMax.dash = Math.max(S.power.dash, pk.startDash);
+    syncPowerVisuals();
+  }
   closePanel();
   updateHud();
   updateBoardBtn();
@@ -1699,6 +2104,7 @@ function startGame(forceTutorial = false) {
 }
 
 function showMenu() {
+  S.daily = null;
   resetRun();
   S.mode = 'menu';
   ui.over.hidden = true;
@@ -1708,6 +2114,8 @@ function showMenu() {
   refreshMenuStats();
   maybeShowLogin();
 }
+
+const ghostKey = () => (S.daily ? `ghost-daily-${S.daily.date}` : `ghost-${S.scene}`);
 
 function gameOver() {
   S.mode = 'over';
@@ -1724,6 +2132,36 @@ function gameOver() {
   const doneToday = meta.daily.missions.filter((m) => m.done).length;
   $('overMult').textContent = `分數倍率 ×${S.mult}　今日任務 ${doneToday}/3${S.stageDone ? `　本次完成第 ${S.stage.no} 關` : ''}`;
   renderOverProgress(sc, best, isBest);
+  // 影子：比上次跑得遠就存成新的影子
+  if (ghost.save(ghostKey(), S.distance) && S.daily) {
+    const old = store.get('ghostDaily', null);
+    if (old && old !== ghostKey()) {
+      try {
+        localStorage.removeItem(`rfc-${old}`);
+      } catch {
+        /* 忽略 */
+      }
+    }
+    store.set('ghostDaily', ghostKey());
+  }
+  const lines = [];
+  // 每日挑戰
+  if (S.daily) {
+    const r = recordDaily(sc, S.distance);
+    const st = dailyChallenge().state;
+    lines.push(`每日挑戰今日最佳 ${st.best.toLocaleString()} 分${st.done ? '　✓ 已達成' : `　目標 ${DAILY_TARGET} m`}`);
+    if (r) showNote({ type: 'daily', text: `每日挑戰完成！${rewardLabel(r)}` });
+  }
+  // 賽季經驗、角色經驗
+  const xp = Math.floor(S.distance / 4) + S.coins + S.bosses * 150 + (S.daily ? 100 : 0);
+  const pass = addPassXp(xp);
+  for (const g of pass.got) showNote({ type: 'daily', text: `賽季 Lv ${g.lv} 獎勵：${rewardLabel(g.r)}` });
+  const cx = addCharXp(charId, Math.floor(S.distance / 2) + S.coins);
+  const cName = CHARACTERS.find((c) => c.id === charId).name;
+  lines.unshift(`賽季經驗 +${xp}（Lv ${pass.before}${pass.after > pass.before ? ` → ${pass.after}` : ''}）　${cName} Lv ${cx.before}${cx.after > cx.before ? ` → ${cx.after}` : ''}`);
+  if (cx.after > cx.before) showNote({ type: 'ach', text: `${cName}升到 Lv ${cx.after}！${perkText(charId)}` });
+  $('overXp').innerHTML = lines.join('<br />');
+  updateBoardBtn();
   meta.flush();
   if (isBest) sfx.record();
   else sfx.gameOver();
@@ -1741,6 +2179,8 @@ function crashReason() {
       return ['撞到高柵欄', '高柵欄要往下滑，從下面鏟過去'];
     case 'ramp':
       return ['撞到斜坡側面', '斜坡要從正前方跑上去'];
+    case 'rail':
+      return ['撞到磨軌欄杆', '欄杆要跳上去，可以一路磨軌加分'];
     case 'caught':
       return ['被站務員抓到了', '側面撞到兩次就會被抓，換道前先看清楚旁邊'];
     case 'train':
@@ -1824,6 +2264,7 @@ ui.musicBtn.setAttribute('aria-pressed', String(!sfx.musicEnabled));
 // 場景選擇
 const sceneButtons = [...document.querySelectorAll('[data-scene]')];
 function selectScene(id, preview = true) {
+  S.daily = null;
   S.scene = id;
   store.set('scene', id);
   for (const b of sceneButtons) b.setAttribute('aria-checked', String(b.dataset.scene === id));
@@ -1867,6 +2308,10 @@ addEventListener('keydown', (e) => {
   const k = e.key;
   if (!$('resetScreen').hidden) {
     if (k === 'Escape') $('resetScreen').hidden = true;
+    return;
+  }
+  if (!$('chestScreen').hidden) {
+    if (k === 'Enter' || k === 'Escape' || k === ' ') $('chestScreen').hidden = true;
     return;
   }
   if (!ui.login.hidden) {
@@ -1984,6 +2429,15 @@ function update(dt) {
   }
 
   level.update(dt, S.z, S.speed, S.time);
+  if (boss.active) {
+    const ev = boss.update(dt, S.z, S.time);
+    if (S.mode === 'playing' && !boss.leaving) {
+      if (ev.throw) bossThrow(ev.throw);
+      if (ev.orb) spawnOrb();
+      if (boss.time <= 0) endBoss(false);
+    }
+  }
+  updateProjectiles(dt);
   const warn = warnings.update(dt, S, level.obstacles, S.time, S.mode === 'playing');
   S.danger = warn.danger;
   if (warn.fresh.length) sfx.warn();
@@ -2045,9 +2499,13 @@ function present(dt) {
     sliding: S.slideT > 0,
     crashed: S.mode === 'crashing' || S.mode === 'over' || S.mode === 'revive',
     idle: S.mode === 'menu',
-    flying: S.power.jetpack > 0,
+    flying: S.power.jetpack > 0 || !!S.zip,
+    grind: S.grinding && S.mode === 'playing',
     lean: -(LANES[S.lane] - S.x) * 0.16,
   });
+  // 影子對手
+  const gh = ghost.update(dt, S, S.mode === 'playing' || S.mode === 'crashing');
+  S.ghostLead = gh;
   ui.powers.hidden = S.mode !== 'playing';
   // 無敵時閃爍；衝刺時身後拖出火花
   player.root.visible = !(S.invuln > 0 && S.mode === 'playing' && Math.floor(S.time * 14) % 2);
@@ -2064,7 +2522,7 @@ function present(dt) {
   updateCamera(dt);
   const dashing = S.power.dash > 0 && S.mode === 'playing';
   // 衝刺光暈、光帶與速度線變金色
-  aura.update(dt, dashing, stage.camera.position, S.time);
+  aura.update(dt, dashing, stage.camera.position, S.time, S.mode === 'playing' && S.grounded && !S.zip);
   if (dashing !== S.goldLines) {
     S.goldLines = dashing;
     stage.speedLines.material.color.set(dashing ? '#ffcf5a' : '#ffffff');
@@ -2091,4 +2549,4 @@ maybeShowLogin();
 frame();
 
 // 方便除錯
-window.__rfc = { S, level, stage, update, present, moveLane, jump, slide, activatePower, clearStage, openPanel, store, meta, chaser, useBoard, sideBump, startGame, aura, warnings, player, env, selectScene };
+window.__rfc = { S, level, stage, update, present, moveLane, jump, slide, activatePower, clearStage, openPanel, store, meta, chaser, useBoard, sideBump, startGame, aura, warnings, player, env, selectScene, boss, ghost, gameOver, startBoss };

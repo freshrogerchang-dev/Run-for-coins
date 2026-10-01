@@ -80,6 +80,7 @@ export class SpeedAura {
     this.player = player;
     this.k = 0;
     this.color = new THREE.Color(3, 1.7, 0.35);
+    this.trailColor = new THREE.Color(2.6, 1.6, 0.3);
     this.MAX = 28;
     this.pool = [];
 
@@ -137,37 +138,52 @@ export class SpeedAura {
     return s;
   }
 
-  setColor(r, g, b) {
-    this.color.setRGB(r, g, b);
+  // 衝刺光暈的顏色（rainbow 為 true 時顏色會循環）
+  setStyle(aura, trail) {
+    this.rainbow = !!aura?.rainbow;
+    if (aura?.color) this.color.setRGB(...aura.color);
+    this.trailRainbow = !!trail?.rainbow;
+    this.trailOn = !!(trail && (trail.color || trail.rainbow));
+    if (trail?.color) this.trailColor.setRGB(...trail.color);
   }
 
-  update(dt, active, cam, time) {
+  // active：衝刺中；running：平常跑步（顯示腳下光帶特效）
+  update(dt, active, cam, time, running = false) {
     this.k += ((active ? 1 : 0) - this.k) * (1 - Math.exp(-dt * (active ? 10 : 5)));
+    const tOn = running && this.trailOn;
+    this.kt = (this.kt || 0) + ((tOn ? 1 : 0) - (this.kt || 0)) * (1 - Math.exp(-dt * 6));
     const k = this.k;
+    const kt = this.kt * 0.7;
     const vis = k > 0.02;
     this.glow.visible = this.streaks.visible = vis;
-    for (const r of this.ribbons) r.mesh.visible = vis;
-    if (!vis) {
-      for (const r of this.ribbons) {
-        this.pool.push(...r.pts);
-        r.pts.length = 0;
-      }
-      return;
-    }
+    if (this.rainbow) this.color.setHSL((time * 0.5) % 1, 1, 0.55).multiplyScalar(3.2);
+    if (this.trailRainbow) this.trailColor.setHSL((time * 0.5 + 0.3) % 1, 1, 0.55).multiplyScalar(3);
     const root = this.player.root;
-    root.updateMatrixWorld(true);
+    if (vis || kt > 0.02) root.updateMatrixWorld(true);
     const scale = root.scale.y;
     const flick = 0.85 + 0.15 * Math.sin(time * 37);
 
     // 身體光暈
-    this.glow.position.set(root.position.x, root.position.y + 0.95 * scale, root.position.z + 0.15);
-    this.glow.scale.setScalar((2.5 + Math.sin(time * 18) * 0.15) * scale);
-    this.glowMat.color.copy(this.color).multiplyScalar(0.28 * k * flick);
+    if (vis) {
+      this.glow.position.set(root.position.x, root.position.y + 0.95 * scale, root.position.z + 0.15);
+      this.glow.scale.setScalar((2.5 + Math.sin(time * 18) * 0.15) * scale);
+      this.glowMat.color.copy(this.color).multiplyScalar(0.28 * k * flick);
+    }
 
-    // 光帶：記錄每個錨點走過的位置，依長度截斷
-    const L = 4.2 * k * scale;
+    // 光帶：記錄每個錨點走過的位置，依長度截斷；兩隻腳的光帶平常也可以當跑步特效
     const c = this.tmpC;
-    for (const r of this.ribbons) {
+    this.ribbons.forEach((r, idx) => {
+      const feet = idx === 2 || idx === 3;
+      const useTrail = feet && kt > k;
+      const rk = feet ? Math.max(k, kt) : k;
+      r.mesh.visible = rk > 0.02;
+      if (!r.mesh.visible) {
+        this.pool.push(...r.pts);
+        r.pts.length = 0;
+        return;
+      }
+      const color = useTrail ? this.trailColor : this.color;
+      const L = (useTrail ? 2.8 : 4.2) * rk * scale;
       const p = (this.pool.pop() || new THREE.Vector3()).copy(r.off);
       r.obj.localToWorld(p);
       r.pts.unshift(p);
@@ -191,14 +207,15 @@ export class SpeedAura {
         col,
         0,
         r.pts,
-        (i) => r.w * scale * (1 - (lens[i] ?? total) / total) * (0.5 + 0.5 * k),
-        (i) => c.copy(this.color).multiplyScalar(Math.pow(1 - (lens[i] ?? total) / total, 1.4) * k * dim * flick),
+        (i) => r.w * scale * (1 - (lens[i] ?? total) / total) * (0.5 + 0.5 * rk),
+        (i) => c.copy(color).multiplyScalar(Math.pow(1 - (lens[i] ?? total) / total, 1.4) * rk * dim * flick),
         cam,
       );
       r.geo.setDrawRange(0, Math.max(0, (n - 1) * 6));
       r.geo.attributes.position.needsUpdate = true;
       r.geo.attributes.color.needsUpdate = true;
-    }
+    });
+    if (!vis) return;
 
     // 掠過的光線（相對於玩家）
     const pos = this.streakGeo.attributes.position.array;

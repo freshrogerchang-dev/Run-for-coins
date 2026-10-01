@@ -40,6 +40,7 @@
         <div class="hud-extra">
           <span id="wordHud" class="word-hud" aria-label="每日字母" hidden></span>
           <span id="tokenHud" class="token-hud" hidden></span>
+          <span id="ghostHud" class="ghost-hud" hidden></span>
         </div>
       </div>
       <div class="hud-right">
@@ -63,6 +64,7 @@
     </button>
 
     <div id="screenFx" class="screen-fx" aria-hidden="true"></div>
+    <div id="bossBar" class="boss-bar" hidden><b>魔王</b><i><i id="bossHp"></i></i></div>
     <div id="laneWarn" class="lane-warns" aria-hidden="true"><i></i><i></i><i></i></div>
     <div id="pops" class="pops" aria-hidden="true"></div>
     <div id="tutHint" class="tut-hint" role="status" hidden>
@@ -94,6 +96,11 @@
           <span><strong id="eventName"></strong><small id="eventInfo"></small></span>
           <b id="eventCount" class="num"></b>
         </button>
+        <button type="button" id="dailyBtn" class="event-btn daily-btn">
+          <i class="event-token" aria-hidden="true">挑</i>
+          <span><strong id="dailyName">每日挑戰</strong><small id="dailyInfo"></small></span>
+          <b id="dailyBest" class="num"></b>
+        </button>
         <div class="menu-row">
           <button type="button" id="missionsBtn" class="chip-btn"><span>任務</span><b id="missionCount" class="num">0/3</b></button>
           <button type="button" id="stagesBtn" class="chip-btn"><span>關卡</span><b id="stagesCount" class="num">0/10</b></button>
@@ -101,6 +108,9 @@
           <button type="button" id="charBtn" class="chip-btn"><span>角色・寵物</span><b id="charCount" class="num">1/4</b></button>
           <button type="button" id="wardrobeBtn" class="chip-btn"><span>服裝</span><b id="outfitCount" class="num">1/12</b></button>
           <button type="button" id="shopBtn" class="chip-btn"><span>商店</span><b>滑板・升級</b></button>
+          <button type="button" id="passBtn" class="chip-btn"><span>賽季</span><b id="passCount" class="num">Lv 0</b></button>
+          <button type="button" id="albumBtn" class="chip-btn"><span>圖鑑</span><b id="albumCount" class="num">0/63</b></button>
+          <button type="button" id="gachaBtn" class="chip-btn"><span>扭蛋</span><b id="keyCount" class="num">鑰匙 0</b></button>
         </div>
         <fieldset class="scenes">
           <legend>選擇場景</legend>
@@ -164,6 +174,9 @@
           <button type="button" role="tab" data-tab="wardrobe">服裝</button>
           <button type="button" role="tab" data-tab="shop">商店</button>
           <button type="button" role="tab" data-tab="events">活動</button>
+          <button type="button" role="tab" data-tab="pass">賽季</button>
+          <button type="button" role="tab" data-tab="album">圖鑑</button>
+          <button type="button" role="tab" data-tab="gacha">扭蛋</button>
         </div>
       </header>
       <div id="panelBody" class="panel-body"></div>
@@ -177,6 +190,17 @@
         <ol id="loginDays" class="login-days"></ol>
         <p class="login-note">連續登入七天拿大獎，中斷一天會從第 1 天重新開始</p>
         <button id="loginBtn" class="btn-primary">領取</button>
+      </div>
+    </section>
+
+    <!-- 開寶箱 -->
+    <section id="chestScreen" class="overlay" hidden>
+      <div class="card chest-card">
+        <div id="chestBox" class="chest-box" aria-hidden="true"><i></i></div>
+        <p id="chestRarity" class="chest-rarity"></p>
+        <h2 id="chestTitle"></h2>
+        <p id="chestNote" class="chest-note"></p>
+        <button id="chestOk" class="btn-primary">好耶</button>
       </div>
     </section>
 
@@ -231,6 +255,7 @@
         </dl>
         <p id="overCause" class="over-cause"></p>
         <ul id="overProgress" class="over-progress"></ul>
+        <p id="overXp" class="over-xp"></p>
         <p id="overMult" class="over-mult"></p>
         <div class="ticket-actions">
           <button id="againBtn" class="btn-primary">再跑一次</button>

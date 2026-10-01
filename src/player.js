@@ -463,7 +463,7 @@ export class Player {
     p.crash = lerp(p.crash, s.crashed ? 1 : 0, 1 - Math.exp(-dt * 8));
     p.idle = lerp(p.idle, s.idle ? 1 : 0, 1 - Math.exp(-dt * 6));
     p.fly = lerp(p.fly || 0, s.flying ? 1 : 0, k);
-    p.board = lerp(p.board || 0, this.fx.board && !s.sliding && !s.crashed && !s.flying ? 1 : 0, k);
+    p.board = lerp(p.board || 0, (this.fx.board || s.grind) && !s.sliding && !s.crashed && !s.flying ? 1 : 0, k);
 
     if (!s.crashed) this.phase += dt * (s.idle ? 2.2 : 4.5 + s.speed * 0.22);
     const ph = this.phase;
