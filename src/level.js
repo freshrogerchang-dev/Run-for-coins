@@ -210,9 +210,11 @@ export class Level {
       trampFrame: new THREE.TorusGeometry(1.0, 0.12, 8, 28).rotateX(Math.PI / 2).translate(0, 0.55, 0),
       trampMat: new THREE.CylinderGeometry(0.92, 0.92, 0.04, 28).translate(0, 0.5, 0),
       trampLegs: new THREE.CylinderGeometry(0.06, 0.06, 0.55, 6),
-      post: new THREE.BoxGeometry(0.3, 8.8, 0.3).translate(0, 4.4, 0),
-      beam: new THREE.BoxGeometry(9.6, 0.35, 0.35).translate(0, 8.7, 0),
-      handle: new THREE.BoxGeometry(0.9, 0.08, 0.08),
+      post: new THREE.BoxGeometry(0.3, 8.0, 0.3).translate(0, 4.0, 0),
+      beam: new THREE.BoxGeometry(9.6, 0.35, 0.35).translate(0, 7.9, 0),
+      handle: new THREE.BoxGeometry(0.9, 0.08, 0.08).translate(0, -1.3, 0),
+      rope: new THREE.BoxGeometry(0.05, 1.3, 0.05),
+      pulley: new THREE.CylinderGeometry(0.16, 0.16, 0.1, 12).rotateZ(Math.PI / 2),
       railBar: new THREE.CylinderGeometry(0.09, 0.09, 1, 10).rotateX(Math.PI / 2),
       railPost: new THREE.BoxGeometry(0.12, 1.2, 0.12).translate(0, 0.6, 0),
       railCap: new THREE.BoxGeometry(0.5, 0.2, 0.3),
@@ -261,18 +263,26 @@ export class Level {
       b.position.z = zz;
       g.add(b);
     }
-    const drop = 1.0;
-    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, len, 6).rotateX(Math.PI / 2), this.fm.cable);
-    cable.position.set(x, 8.45 - drop / 2, -len / 2);
+    const drop = 0.8;
+    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, len, 6).rotateX(Math.PI / 2), this.fm.cable);
+    cable.position.set(x, 7.65 - drop / 2, -len / 2);
     cable.rotation.x = -Math.atan2(drop, len);
     g.add(cable);
-    const handle = new THREE.Mesh(this.fg.handle, this.fm.red);
-    handle.position.set(x, 7.9, -0.6);
+    // 滑輪把手：抓住後跟著跑者一起滑
+    const handle = new THREE.Group();
+    handle.add(new THREE.Mesh(this.fg.handle, this.fm.red));
+    const rope = new THREE.Mesh(this.fg.rope, this.fm.cable);
+    rope.position.y = -0.65;
+    handle.add(rope);
+    const wheel = new THREE.Mesh(this.fg.pulley, this.fm.steel);
+    wheel.position.y = 0.22;
+    handle.add(wheel);
+    handle.position.set(x, 7.3, -0.6);
     g.add(handle);
     g.position.z = z;
     this.scene.add(g);
-    this.zips.push({ mesh: g, lane, x, z0: z, z1: z - len, used: false, handle });
-    for (let d = 6; d < len - 4; d += 2.4) this.addCoin(x, 6.3 - (d / len) * drop, z - d);
+    this.zips.push({ mesh: g, lane, x, z0: z, z1: z - len, len, drop, used: false, handle });
+    for (let d = 6; d < len - 4; d += 2.4) this.addCoin(x, 5.45 - (d / len) * drop * 0.5, z - d);
   }
 
   // 磨軌欄杆：跳上去可以滑過一整段，當成矮的「列車」處理

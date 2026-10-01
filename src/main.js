@@ -986,7 +986,6 @@ function stepPlaying(dt) {
     for (const zp of level.zips) {
       if (zp.used || Math.abs(S.x - zp.x) > 1.2 || !(prevZ > zp.z0 && S.z <= zp.z0)) continue;
       zp.used = true;
-      zp.handle.visible = false;
       S.zip = zp;
       S.lane = zp.lane;
       S.slideT = 0;
@@ -996,7 +995,14 @@ function stepPlaying(dt) {
       break;
     }
   }
+  // 滑輪跟著跑者沿鋼索移動
+  if (S.zip) {
+    const d = clamp(S.zip.z0 - S.z, 0, S.zip.len);
+    S.zip.handle.position.z = -d;
+    S.zip.handle.position.y = 7.3 - (d / S.zip.len) * S.zip.drop;
+  }
   if (S.zip && S.z <= S.zip.z1) {
+    S.zip.handle.visible = false;
     S.zip = null;
     S.invuln = Math.max(S.invuln, 0.9);
     S.grounded = false;
@@ -1004,7 +1010,7 @@ function stepPlaying(dt) {
   }
   const flying = S.power.jetpack > 0 || !!S.zip;
   if (flying) {
-    S.vy = ((S.zip ? 5.3 : JET_Y) - S.y) * 4;
+    S.vy = ((S.zip ? 4.45 - (clamp(S.zip.z0 - S.z, 0, S.zip.len) / S.zip.len) * S.zip.drop : JET_Y) - S.y) * 4;
     S.grounded = false;
   } else if (!S.grounded) S.vy -= gravity() * dt;
   S.y += S.vy * dt;
@@ -1273,11 +1279,18 @@ function updateCamera(dt) {
 
   // 在車頂時鏡頭整個升上去（避開電車線），跳躍只跟一半
   const floorY = S.mode === 'menu' ? GROUND : Math.min(TRAIN_TOP, S.floorY ?? GROUND);
-  const camTarget = S.power.jetpack > 0 || S.y > TRAIN_TOP + 2.2 ? S.y + 3.3 : 3.7 + (floorY - GROUND) + Math.max(0, S.y - floorY) * 0.5;
+  // 滑索時鏡頭在鋼索下方並往旁邊偏，鋼索才不會擋住畫面
+  const camTarget = S.zip
+    ? S.y + 1.3
+    : S.power.jetpack > 0 || S.y > TRAIN_TOP + 2.2
+      ? S.y + 3.3
+      : 3.7 + (floorY - GROUND) + Math.max(0, S.y - floorY) * 0.5;
   S.camY = damp(S.camY, camTarget, 5, dt);
   // 巨人時鏡頭拉遠
   S.camPull = damp(S.camPull || 0, S.power.giant > 0 && S.mode === 'playing' ? 1 : 0, 3, dt);
   followPos.set(S.x * 0.7, S.camY + S.camPull * 2.2, S.z + 7.2 + S.camPull * 4);
+  S.zipCam = damp(S.zipCam || 0, S.zip ? 1 : 0, 4, dt);
+  followPos.x += S.zipCam * 1.8;
   followLook.set(S.x * 0.85, S.camY - 2.0, S.z - 9);
 
   const target = S.mode === 'menu' ? 0 : 1;
@@ -1539,7 +1552,7 @@ function declineRevive() {
   gameOver();
 }
 
-const score = () => (Math.floor(S.distance) + S.coins * 10 + S.bonus) * S.mult;
+const score = () => (Math.floor(S.distance) + S.coins * 10 + Math.floor(S.bonus)) * S.mult;
 
 function refreshMenuStats() {
   ui.best.textContent = store.get('best', 0).toLocaleString();
@@ -2119,6 +2132,8 @@ const ghostKey = () => (S.daily ? `ghost-daily-${S.daily.date}` : `ghost-${S.sce
 
 function gameOver() {
   S.mode = 'over';
+  ui.banner.hidden = true;
+  $('bossBar').hidden = true;
   const sc = score();
   const best = store.get('best', 0);
   const isBest = sc > best;
