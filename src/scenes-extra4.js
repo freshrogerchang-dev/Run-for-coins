@@ -638,7 +638,7 @@ function sfAssets() {
     water: std('#3f6f8f', { roughness: 0.15, metalness: 0.3 }),
     bridge: std('#c0362c', { roughness: 0.6 }),
     lanternWire: std('#2a2a2a', { roughness: 0.6 }),
-    lantern: glow(3.8, 0.7, 0.4),
+    lantern: glow(1.5, 0.12, 0.06),
   };
   return { G, M };
 }
