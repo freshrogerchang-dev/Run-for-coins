@@ -942,6 +942,9 @@ export function roadTexture(style) {
     candy: '#e79cbf',
     graveyard: '#3b3640',
     planks: '#9a6b42',
+    boulevard: '#5a5450',
+    avenue: '#3e4045',
+    cable: '#55575b',
   }[style];
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, W, H);
@@ -1122,6 +1125,61 @@ export function roadTexture(style) {
           ctx.fillStyle = '#3a2a1a';
           ctx.fillRect(xOf(m) - 3, y + 8, 6, 5);
         }
+      }
+      break;
+    case 'boulevard':
+      // 被太陽曬淡的柏油、補丁
+      for (let i = 0; i < 6; i++) {
+        ctx.fillStyle = 'rgba(40,36,34,0.35)';
+        ctx.fillRect(Math.random() * W, Math.random() * H, rand(20, 60), rand(10, 40));
+      }
+      dashes('#f4f1e8');
+      for (const m of [-4.1, 4.1]) {
+        ctx.fillStyle = '#f2c230';
+        ctx.fillRect(xOf(m) - 2, 0, 4, H);
+      }
+      break;
+    case 'avenue': {
+      dashes('#e8e6e0');
+      // 斑馬線、人孔蓋、裂縫
+      ctx.fillStyle = 'rgba(235,235,230,0.85)';
+      for (let x = 6; x < W; x += 22) ctx.fillRect(x, 6, 12, 34);
+      ctx.fillStyle = '#2b2d31';
+      ctx.beginPath();
+      ctx.arc(xOf(1.25), 170, 13, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#55585e';
+      ctx.lineWidth = 2;
+      for (let r = 4; r < 13; r += 4) {
+        ctx.beginPath();
+        ctx.arc(xOf(1.25), 170, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(20,20,22,0.6)';
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 8; i++) {
+        let x = Math.random() * W;
+        let y = Math.random() * H;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        for (let k = 0; k < 4; k++) ctx.lineTo((x += rand(-14, 14)), (y += rand(-14, 14)));
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'cable':
+      // 每條車道兩條纜車軌 + 中間的纜繩溝槽
+      for (const m of [-2.5, 0, 2.5]) {
+        ctx.fillStyle = '#8a8d92';
+        for (const d of [-0.72, 0.72]) ctx.fillRect(xOf(m + d) - 3, 0, 6, H);
+        ctx.fillStyle = '#1c1d20';
+        ctx.fillRect(xOf(m) - 1.5, 0, 3, H);
+        ctx.fillStyle = '#6a6c70';
+        for (const d of [-0.72, 0.72]) ctx.fillRect(xOf(m + d) - 1, 0, 2, H);
+      }
+      for (const m of [-3.95, 3.95]) {
+        ctx.fillStyle = '#e8e6e0';
+        ctx.fillRect(xOf(m) - 2, 0, 4, H);
       }
       break;
     case 'metal':

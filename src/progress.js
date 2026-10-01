@@ -144,6 +144,21 @@ export const OUTFITS = [
     hat: 'cap', extras: ['sunglasses'],
   },
   {
+    id: 'hollywood', name: '好萊塢巨星',
+    colors: { top: '#f7f3ea', trim: '#d4a017', pants: '#f7f3ea', hat: '#d4a017', hair: '#f2d27a', pack: '#ff6fb5', shoe: '#f7f3ea', sole: '#d4a017' },
+    hat: 'none', extras: ['sunglasses'],
+  },
+  {
+    id: 'brooklyn', name: '布魯克林潮人',
+    colors: { top: '#6b7280', trim: '#f7c400', pants: '#1f2937', hat: '#111827', hair: '#1a1a1a', pack: '#f7c400', shoe: '#f4f4f0', sole: '#d7263d' },
+    hat: 'beanie', extras: ['phones'],
+  },
+  {
+    id: 'gripman', name: '纜車駕駛',
+    colors: { top: '#1f3a6b', trim: '#d9a933', pants: '#1f3a6b', hat: '#1f3a6b', hair: '#4a2f1a', pack: '#a3241e', shoe: '#1a1a1a', sole: '#333333' },
+    hat: 'conductor', extras: ['scarf'],
+  },
+  {
     id: 'golden', name: '黃金傳奇',
     colors: { top: '#ffc21a', trim: '#fff1b0', pants: '#b8860b', hat: '#ffd700', hair: '#2b1b12', pack: '#ffd700', shoe: '#ffd700', sole: '#b8860b' },
     hat: 'crown', extras: ['sunglasses'], metallic: true,

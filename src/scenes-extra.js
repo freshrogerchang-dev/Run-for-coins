@@ -15,6 +15,7 @@ import {
 import { SEG_LEN } from './config.js';
 import { EXTRA_BUILDERS2 } from './scenes-extra2.js';
 import { EXTRA_BUILDERS3 } from './scenes-extra3.js';
+import { EXTRA_BUILDERS4 } from './scenes-extra4.js';
 
 const L = SEG_LEN;
 const HALF = -L / 2;
@@ -651,6 +652,7 @@ export const EXTRA_BUILDERS = {
   space: build_space,
   ...EXTRA_BUILDERS2,
   ...EXTRA_BUILDERS3,
+  ...EXTRA_BUILDERS4,
 };
 
 // 全域動畫：熔岩流動、瀑布、太空場景天上的行星

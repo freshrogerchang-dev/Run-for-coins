@@ -1000,7 +1000,7 @@ function updateTrainAudio(dt) {
   if (p > 0.3) {
     S.clackT -= dt;
     if (S.clackT <= 0) {
-      if (['train', 'metro', 'tram'].includes(vehicleNear)) sfx.clack();
+      if (['train', 'metro', 'tram', 'cablecar'].includes(vehicleNear)) sfx.clack();
       else if (['camels', 'elephants', 'tortoises', 'dinos', 'pandas'].includes(vehicleNear)) sfx.step('sand');
       S.clackT = 0.5 - p * 0.25;
     }
