@@ -1,0 +1,17 @@
+{
+  "name": "金幣酷跑 Run for Coins",
+  "short_name": "金幣酷跑",
+  "description": "3D 跑酷遊戲：換道、跳躍、滑鏟，一路吃金幣。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#121722",
+  "theme_color": "#2a1a6e",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

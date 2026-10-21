@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- 夕陽天空 -->
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a1a6e"/>
+      <stop offset="0.45" stop-color="#c2366e"/>
+      <stop offset="0.72" stop-color="#ff7a2e"/>
+      <stop offset="1" stop-color="#ffc84a"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.62" r="0.42">
+      <stop offset="0" stop-color="#fff3c4" stop-opacity="0.95"/>
+      <stop offset="0.35" stop-color="#ffd06a" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ff7a2e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a1f4f"/>
+      <stop offset="1" stop-color="#140c2a"/>
+    </linearGradient>
+    <linearGradient id="rail" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe9b0" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#fff6dc"/>
+    </linearGradient>
+    <!-- 金幣 -->
+    <radialGradient id="gold" cx="0.36" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#fff6c8"/>
+      <stop offset="0.35" stop-color="#ffd23a"/>
+      <stop offset="0.75" stop-color="#f2a100"/>
+      <stop offset="1" stop-color="#b86a00"/>
+    </radialGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff1a8"/>
+      <stop offset="0.5" stop-color="#e09000"/>
+      <stop offset="1" stop-color="#8a4a00"/>
+    </linearGradient>
+    <linearGradient id="star" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff8d6"/>
+      <stop offset="1" stop-color="#ffb800"/>
+    </linearGradient>
+    <linearGradient id="streak" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#fff4c2" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#fff4c2" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="22" stdDeviation="22" flood-color="#2a0a30" flood-opacity="0.55"/>
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+
+  <!-- 背景：天空與太陽光 -->
+  <rect width="1024" height="1024" fill="url(#sky)"/>
+  <rect width="1024" height="1024" fill="url(#sun)"/>
+  <!-- 地平線的夕陽餘暉 -->
+  <ellipse cx="512" cy="640" rx="620" ry="120" fill="#ffb347" opacity="0.55" filter="url(#glow)"/>
+  <!-- 遠方的城市剪影 -->
+  <path fill="#5a1f5e" opacity="0.75" d="M0 640 V540 h70 v-60 h60 v90 h50 v-130 h80 v110 h40 v-70 h70 v100 h60 v-150 h90 v130 h50 v-90 h70 v120 h60 v-60 h80 v-100 h70 v140 h50 v-80 h74 V640 Z"/>
+  <!-- 地面與往遠方收斂的軌道 -->
+  <path fill="url(#ground)" d="M0 640 H1024 V1024 H0 Z"/>
+  <g fill="url(#rail)">
+    <path d="M492 640 L500 640 L330 1024 L282 1024 Z"/>
+    <path d="M524 640 L532 640 L742 1024 L694 1024 Z"/>
+  </g>
+  <g fill="#ffcf7a" opacity="0.45">
+    <rect x="452" y="668" width="120" height="7"/>
+    <rect x="432" y="712" width="160" height="10"/>
+    <rect x="404" y="772" width="216" height="13"/>
+    <rect x="366" y="852" width="292" height="17"/>
+    <rect x="314" y="960" width="396" height="22"/>
+  </g>
+
+  <!-- 速度線 -->
+  <g>
+    <rect x="70" y="372" width="300" height="22" rx="11" fill="url(#streak)"/>
+    <rect x="40" y="452" width="330" height="30" rx="15" fill="url(#streak)"/>
+    <rect x="110" y="540" width="250" height="20" rx="10" fill="url(#streak)"/>
+  </g>
+
+  <!-- 金幣光暈 -->
+  <circle cx="560" cy="430" r="250" fill="#ffd23a" opacity="0.45" filter="url(#glow)"/>
+  <!-- 金幣（稍微傾斜，有厚度） -->
+  <g filter="url(#shadow)" transform="rotate(-12 560 430)">
+    <ellipse cx="578" cy="438" rx="232" ry="236" fill="#9a5600"/>
+    <ellipse cx="560" cy="430" rx="232" ry="236" fill="url(#rim)"/>
+    <ellipse cx="560" cy="430" rx="196" ry="200" fill="url(#gold)"/>
+    <ellipse cx="560" cy="430" rx="196" ry="200" fill="none" stroke="#c97a00" stroke-width="8" opacity="0.6"/>
+    <!-- 浮雕星星 -->
+    <path transform="translate(560 438)" fill="#b86a00" opacity="0.55"
+      d="M0 -132 L38 -46 L130 -40 L60 20 L82 112 L0 64 L-82 112 L-60 20 L-130 -40 L-38 -46 Z" />
+    <path transform="translate(554 428)" fill="url(#star)" stroke="#fff3b0" stroke-width="6" stroke-linejoin="round"
+      d="M0 -132 L38 -46 L130 -40 L60 20 L82 112 L0 64 L-82 112 L-60 20 L-130 -40 L-38 -46 Z" />
+    <!-- 高光 -->
+    <path d="M420 330 A196 200 0 0 1 560 230" stroke="#fffbe6" stroke-width="22" stroke-linecap="round" fill="none" opacity="0.85"/>
+  </g>
+
+  <!-- 閃光 -->
+  <g fill="#fffbe6">
+    <path d="M790 210 l14 44 l44 14 l-44 14 l-14 44 l-14 -44 l-44 -14 l44 -14 Z"/>
+    <path d="M330 220 l9 28 l28 9 l-28 9 l-9 28 l-9 -28 l-28 -9 l28 -9 Z" opacity="0.9"/>
+    <path d="M840 560 l8 24 l24 8 l-24 8 l-8 24 l-8 -24 l-24 -8 l24 -8 Z" opacity="0.8"/>
+  </g>
+</svg>

@@ -196,6 +196,14 @@ python3 -m http.server 8080
 
 然後打開 <http://localhost:8080>。Three.js 由 jsDelivr CDN 載入，所以第一次需要網路。
 
+## 加到 iPhone／iPad 主畫面
+
+1. 用 **Safari** 打開遊戲網址（GitHub Pages 或 Cloudflare Pages 的網址）
+2. 點下方的「分享」按鈕 → 「加入主畫面」→「新增」
+3. 主畫面會出現「金幣酷跑」的金幣圖示，點開是全螢幕，沒有網址列
+
+圖示在 `icons/`：`icon.svg` 是原始設計（夕陽、城市剪影、往遠方延伸的軌道和一枚發光的星星金幣），其他 PNG 是不同尺寸（iPhone 用 180×180 的 `apple-touch-icon.png`）。改了 SVG 之後重新輸出 PNG 即可。
+
 ## 發佈到網路上
 
 這是純靜態網站，不用建置，任何靜態主機都可以放。
